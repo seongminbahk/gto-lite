@@ -14,5 +14,5 @@ export const SITE_NAME = "gtoLite";
 export const SITE_TAGLINE = "Poker ranges and a postflop solver in your browser";
 export const SITE_DESCRIPTION =
   "Free poker study tool: tournament and cash preflop ranges with ICM, and a postflop GTO solver that runs in your browser.";
-export const REPO_URL = "https://github.com/smomari/gto-lite";
+export const REPO_URL = "https://github.com/seongminbahk/gto-lite";
 export const FEEDBACK_URL = `${REPO_URL}/issues`;

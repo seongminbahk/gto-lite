@@ -15,7 +15,7 @@ describe("AboutPage", () => {
     expect(screen.getByRole("heading", { name: "What it doesn't do" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open the solver" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("link", { name: /gtoLite/ })).toHaveAttribute("href", "/");
-    expect(screen.getByRole("link", { name: "Open an issue on GitHub" })).toHaveAttribute("href", "https://github.com/smomari/gto-lite/issues");
+    expect(screen.getByRole("link", { name: "Open an issue on GitHub" })).toHaveAttribute("href", "https://github.com/seongminbahk/gto-lite/issues");
   });
 
   it("gives the preflop section the anchor the source badge links to", () => {
