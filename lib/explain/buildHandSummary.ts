@@ -19,7 +19,7 @@ import {
 } from "./summarySchema";
 
 /** What the result screen can't see itself: the table settings, the seats, and the preflop line. */
-export type ExplainContext = Pick<HandSummaryInput, "game" | "oop" | "ip" | "preflop">;
+export type ExplainContext = Pick<HandSummaryInput, "game" | "oop" | "ip" | "preflop" | "rangesEdited">;
 
 /** One finished street: what its solve returned and the line played through it. */
 export interface ExplainStreetInput {
@@ -40,6 +40,8 @@ export interface HandSummaryInput {
     responses: Record<string, SolveResponse>;
     potBb: number;
   };
+  /** Seats whose range the user entered before the flop, in place of the chart's. */
+  rangesEdited?: { oop: boolean; ip: boolean };
   /** From the flop to the street the hand ended on. */
   streets: ExplainStreetInput[];
   ending: { node: SerializedTerminalNode; allIn: boolean; rakeBb: number };
@@ -232,9 +234,11 @@ export function buildHandSummary(input: HandSummaryInput): HandSummary {
           }),
         };
 
+  const edited = (["oop", "ip"] as const).filter((seat) => input.rangesEdited?.[seat]);
   return {
     game: input.game,
     seats: { oop: input.oop, ip: input.ip },
+    ...(edited.length > 0 && { rangesEditedBy: edited }),
     preflop: { potBb: round1(input.preflop.potBb), decisions: summarizePreflop(input) },
     streets,
     result,

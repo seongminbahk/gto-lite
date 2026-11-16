@@ -24,4 +24,8 @@ describe("explainInstructions", () => {
     expect(flopOnly).not.toContain("## River");
     expect(explainInstructions("ko", ["Flop", "Turn"])).toContain('"## 프리플랍", "## 플랍", "## 턴", "## 결과"');
   });
+
+  it("tells the model how to treat a range the user entered", () => {
+    expect(explainInstructions("en", ["Flop"])).toMatch(/rangesEditedBy[^]*entered by the user/);
+  });
 });

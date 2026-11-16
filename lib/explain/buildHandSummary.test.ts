@@ -133,6 +133,15 @@ describe("buildHandSummary", () => {
     expect(handSummarySchema.safeParse(summary).success).toBe(true);
   });
 
+  it("names the seats whose range the user entered, and says nothing when none was", () => {
+    expect(summary).not.toHaveProperty("rangesEditedBy");
+    expect(buildHandSummary({ ...INPUT, rangesEdited: { oop: false, ip: false } })).not.toHaveProperty("rangesEditedBy");
+    const edited = buildHandSummary({ ...INPUT, rangesEdited: { oop: false, ip: true } });
+    expect(edited.rangesEditedBy).toEqual(["ip"]);
+    expect(handSummarySchema.safeParse(edited).success).toBe(true);
+    expect(handSummarySchema.safeParse({ ...edited, rangesEditedBy: [] }).success).toBe(false);
+  });
+
   it("weights each seat's preflop chart by combos, and only charts the seats that saw the flop", () => {
     const [btn, sb, bb] = summary.preflop.decisions;
     expect(btn).toMatchObject({ seat: "BTN", action: "raise", sizeBb: 2.5, source: "heuristic-approx", combos: 18, mix: { fold: 66.7, raise: 33.3 } });

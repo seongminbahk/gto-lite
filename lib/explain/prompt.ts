@@ -24,6 +24,7 @@ const GLOSSARY = `How to read the data:
 - streets[].ranges: both ranges entering the street, with "buckets": the percent of each range in each hand-strength bucket. Buckets are showdown equity on the current board against the other player's range: nuts at least 90%, strong 70-90%, medium 45-70%, draw (below 45% now, but at least 8 next cards make it strong; never on the river), air (the rest). Comparing the two ranges' buckets shows range advantage (more strong+nuts) and nut advantage (more nuts).
 - streets[].decisions: each decision on the line actually played. "options" are the actions available, "mix" is the whole range's frequency of each option (same order), "taken" is the option actually played, "byBucket" gives each bucket's share of the range at that decision and how that bucket split across the options. "toCallBb" is the bet faced. Sizes are in big blinds; a bet of X into potBb P is X/P of the pot.
 - streets[].exploitabilityPct: how far the postflop solve is from equilibrium, in percent of the pot. Below about 1% is accurate.
+- rangesEditedBy: seats whose range the user typed in before the flop, in place of the preflop chart's. Their streets[].ranges are that entered range; their preflop.decisions still show the chart's.
 - stackBb is the effective stack behind at the start of the street; stackBb / startPotBb is the SPR.
 - result: "fold" names the winner; "showdown" and "allin" may give each seat's average equity over the ranges that reached the end of this line.`;
 
@@ -40,6 +41,7 @@ Rules:
 - Explain the reasons, not just the numbers: range and nut advantage from the buckets, which buckets bet for value, which bluff and which check, why a size was used (small with a range advantage, large and polarized with a nut advantage), position, SPR, and when they matter, rake, the ante, and ICM.
 - For each street, say what was actually played and how common that choice was in the range.
 - If preflop source is "heuristic-approx", say plainly that preflop ranges come from an approximate chart, not a solve.
+- For a seat in rangesEditedBy, say its range was entered by the user, and don't explain that range from its preflop decisions, which describe the chart's.
 - If a street's exploitabilityPct is above 2, say that street's numbers are less precise.
 
 Format:

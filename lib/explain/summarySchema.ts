@@ -89,6 +89,8 @@ export const handSummarySchema = z.strictObject({
   }),
   /** OOP acts first postflop. */
   seats: z.strictObject({ oop: position, ip: position }),
+  /** Seats whose range the user entered in place of the chart's. */
+  rangesEditedBy: z.array(z.enum(["oop", "ip"])).min(1).max(2).optional(),
   preflop: z.strictObject({ potBb: bb, decisions: z.array(preflopDecision).max(24) }),
   streets: z.array(street).min(1).max(3),
   result,
