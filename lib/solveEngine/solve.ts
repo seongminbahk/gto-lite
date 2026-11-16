@@ -252,8 +252,13 @@ function facingRaiseRanking(ctx: FacingRaiseContext): Map<string, number> {
   const stack = ctx.format.playabilityByStack ? ctx.effectiveStackBb : undefined;
   const weight = ctx.format.coldCallRangeEquityWeight ?? 0;
   const coldCall = ctx.potState.raiseDepth === 1 && !ctx.isBlind && !ctx.ownDecision;
-  if (weight === 0 || !coldCall || !ctx.villainRange || shareOfCombos(ctx.villainRange) === 0) return getPlayabilityRanking(ctx.matrix, stack);
-  return getRangePlayabilityRanking(ctx.matrix, ctx.villainRange, weight, stack);
+  const hasVillainRange = !!ctx.villainRange && shareOfCombos(ctx.villainRange) > 0;
+  const reraiseWeight = ctx.format.reraiseRangeEquityWeight ?? 0;
+  if (ctx.potState.raiseDepth >= 2 && reraiseWeight > 0 && hasVillainRange) {
+    return getRangePlayabilityRanking(ctx.matrix, ctx.villainRange!, reraiseWeight, stack);
+  }
+  if (weight === 0 || !coldCall || !hasVillainRange) return getPlayabilityRanking(ctx.matrix, stack);
+  return getRangePlayabilityRanking(ctx.matrix, ctx.villainRange!, weight, stack);
 }
 
 function solveFacingRaise(ctx: FacingRaiseContext): SolvedNode {
@@ -325,14 +330,20 @@ function vsReraiseParams(ctx: FacingRaiseContext, heroRange: FrequencyMap, villa
       rake: ctx.rake.structure,
     };
   }
-  const fourBet = fourBetTuning(ctx);
+  const fiveBet = format.fiveBet && {
+    ...format.fiveBet,
+    widthRatio: ctx.isBlind ? (format.fiveBet.blindWidthRatio ?? format.fiveBet.widthRatio) : format.fiveBet.widthRatio,
+  };
+  const fourBet = potState.raiseDepth >= 3 && fiveBet ? fiveBet : fourBetTuning(ctx);
   return {
     ...common,
     raiseWidth: villainShare * fourBet.widthRatio * format.fourBet.valueShare,
     // A flatting range is capped: it has nothing to spare for bluffs.
     bluffWidth: calledLast ? 0 : villainShare * fourBet.widthRatio * fourBet.bluffShare,
-    keepBase: format.reraiseKeepBase,
+    keepBase: potState.raiseDepth >= 3 ? (format.facingFourBetKeepBase ?? format.reraiseKeepBase) : format.reraiseKeepBase,
     keepFactor: reraiseKeepFactor(ctx),
+    valueMixSpread: format.reraiseValueMixSpread,
+    blockerBluffMaxShare: format.reraiseBlockerBluffMaxShare,
     ...(calledLast ? { maxRaiseShareOfKept: format.calledReraiseShareCap } : { valueInDeckCombos: true }),
     rake: ctx.rake.structure,
   };

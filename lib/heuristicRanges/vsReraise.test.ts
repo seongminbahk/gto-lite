@@ -157,4 +157,29 @@ describe("generateVsReraiseScenario minValueEquity", () => {
     const strong = solve({ heroRange: range("AA KK A4o"), villainRange: range(OPENER), raiseWidth: 0.02, minValueEquity: 0.5 });
     expect(strong.find((h) => h.hand === "AA")!.raise).toBeGreaterThan(0);
   });
+
+  it("mixes value re-raises and calls across the edge of the value range when asked", () => {
+    const hard = solve();
+    const soft = solve({ valueMixSpread: 0.3 });
+    const raised = (hands: HandFrequency[]) => hands.reduce((sum, h) => sum + h.raise * HAND_BY_LABEL.get(h.hand)!.combos, 0);
+    expect(hard.every((h) => h.raise === 0 || h.raise === 1 || h.raise === Math.min(1, h.raise))).toBe(true);
+    expect(soft.filter((h) => h.raise > 0.05 && h.raise < 0.95).length).toBeGreaterThan(hard.filter((h) => h.raise > 0.05 && h.raise < 0.95).length);
+    // About as many combos re-raise either way, and the best hand still always does.
+    expect(Math.abs(raised(soft) - raised(hard))).toBeLessThan(0.25 * raised(hard));
+    expect(soft.find((h) => h.hand === "AA")!.raise).toBe(1);
+  });
+
+  it("bluffs with suited aces and kings, part of each, including hands that would call", () => {
+    const hands = solve({ bluffWidth: 0.01, blockerBluffMaxShare: 0.5 });
+    const value = new Set(solve().filter((h) => h.raise > 0).map((h) => h.hand));
+    const bluffs = hands.filter((h) => h.raise > 0 && !value.has(h.hand));
+    expect(bluffs.length).toBeGreaterThan(0);
+    for (const h of bluffs) {
+      expect(h.hand).toMatch(/^[AK].s$/);
+      expect(h.raise).toBeLessThanOrEqual(0.5 + 1e-9);
+      expect(h.fold + h.call + h.raise).toBeCloseTo(1, 9);
+    }
+    // A wheel ace, which blocks aces and makes straights, goes first.
+    expect(hands.find((h) => h.hand === "A5s")!.raise).toBeGreaterThan(0);
+  });
 });

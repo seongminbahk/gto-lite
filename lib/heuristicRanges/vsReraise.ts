@@ -11,6 +11,19 @@ import {
   RERAISE_KEEP_PER_EQUITY,
 } from "./config";
 import { isThreeBetBluffCandidate } from "./generateScenario";
+import type { CanonicalHand } from "@/lib/handRange/handList";
+
+/** Suited aces and kings that aren't already value: they hold a card of the raiser's AA, KK and AK. */
+function isBlockerBluffCandidate(h: CanonicalHand): boolean {
+  return h.type === "suited" && (h.rankHigh === "A" || h.rankHigh === "K");
+}
+
+/** Aces before kings, wheel aces first (they also make straights), then down the kicker. */
+function blockerRank(hand: string): number {
+  const high = hand[0] === "A" ? 0 : 100;
+  const low = "5432TJQK9876".indexOf(hand[1]);
+  return high + (low < 0 ? 50 : low);
+}
 
 export interface VsReraiseParams {
   /** The hands this seat got here with. Anything else folds: it isn't really being dealt here. */
@@ -40,6 +53,19 @@ export interface VsReraiseParams {
   valueInDeckCombos?: boolean;
   /** Hands with less equity than this against the raiser don't re-raise for value. Default: none. */
   minValueEquity?: number;
+  /**
+   * How gradually value re-raises give way to calls, as a share of the kept
+   * range: hands across this band at the edge of the value range mix both,
+   * best hands raising most, instead of the top raising and the rest flatting.
+   * Default 0, a hard edge.
+   */
+  valueMixSpread?: number;
+  /**
+   * Bluff with blockers: suited aces and kings, which hold the cards of the
+   * raiser's best hands, re-raise up to this share of each hand, calls included,
+   * instead of bluffing with the next hands that would fold. Default: none.
+   */
+  blockerBluffMaxShare?: number;
   rake: RakeTerms;
   /** ICM's price on the chips a call risks: losing them counts this many times. Default 1, chip EV. */
   bubbleFactor?: number;
@@ -160,16 +186,49 @@ export function generateVsReraiseScenario(
   // Of those, the ones with the most equity against the raiser re-raise for value. With
   // `valueInDeckCombos`, a range that mixes a few of its best hands in doesn't re-raise its middle to make up the count.
   const byEquity = [...reached].sort((x, y) => y.equity - x.equity);
-  for (const { hand, combos, equity } of byEquity) {
-    if (raiseCombosLeft <= 0 || equity < (params.minValueEquity ?? 0)) break;
-    const entry = frequencies.get(hand)!;
-    const deckCombos = params.valueInDeckCombos ? HAND_BY_LABEL.get(hand)!.combos : combos;
-    const raise = Math.min(entry.continueFreq, raiseCombosLeft / deckCombos);
-    raiseCombosLeft = Math.max(0, raiseCombosLeft - raise * deckCombos);
-    frequencies.set(hand, { ...entry, raise });
+  const spread = (params.valueMixSpread ?? 0) * rangeCombos;
+  if (spread > 0) {
+    // Each hand raises the share of its combos that sits above the edge, the edge blurred across `spread`.
+    const target = raiseCombosLeft;
+    let before = 0;
+    for (const { hand, combos, equity } of byEquity) {
+      if (equity < (params.minValueEquity ?? 0)) break;
+      const entry = frequencies.get(hand)!;
+      const deckCombos = params.valueInDeckCombos ? HAND_BY_LABEL.get(hand)!.combos : combos;
+      const middle = before + deckCombos / 2;
+      before += deckCombos;
+      const raise = Math.min(entry.continueFreq, Math.max(0, Math.min(1, (target + spread / 2 - middle) / spread)));
+      if (raise > 0) frequencies.set(hand, { ...entry, raise });
+      if (middle > target + spread / 2) break;
+    }
+  } else {
+    for (const { hand, combos, equity } of byEquity) {
+      if (raiseCombosLeft <= 0 || equity < (params.minValueEquity ?? 0)) break;
+      const entry = frequencies.get(hand)!;
+      const deckCombos = params.valueInDeckCombos ? HAND_BY_LABEL.get(hand)!.combos : combos;
+      const raise = Math.min(entry.continueFreq, raiseCombosLeft / deckCombos);
+      raiseCombosLeft = Math.max(0, raiseCombosLeft - raise * deckCombos);
+      frequencies.set(hand, { ...entry, raise });
+    }
   }
 
   let bluffCombosLeft = bluffWidth * TOTAL_COMBOS;
+  if (params.blockerBluffMaxShare !== undefined) {
+    // Suited aces first, then kings; within each, the most playable first.
+    const blockers = reached
+      .filter(({ hand }) => isBlockerBluffCandidate(HAND_BY_LABEL.get(hand)!))
+      .sort((a, b) => blockerRank(a.hand) - blockerRank(b.hand));
+    for (const { hand, combos } of blockers) {
+      if (bluffCombosLeft <= 0) break;
+      const entry = frequencies.get(hand)!;
+      const room = params.blockerBluffMaxShare - entry.raise;
+      if (room <= 0) continue;
+      const bluff = Math.min(room, bluffCombosLeft / combos);
+      frequencies.set(hand, { continueFreq: Math.max(entry.continueFreq, entry.raise + bluff), raise: entry.raise + bluff });
+      bluffCombosLeft -= bluff * combos;
+    }
+    bluffCombosLeft = 0;
+  }
   for (const { hand, combos } of reached) {
     if (bluffCombosLeft <= 0) break;
     const entry = frequencies.get(hand)!;

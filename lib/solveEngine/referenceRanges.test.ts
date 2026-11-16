@@ -134,4 +134,21 @@ describe("against public solver ranges", () => {
     // A deep SB raises a slice of everything it plays, so a 3-bet folds most of it.
     expectNear(ofRange(hands(game, [["SB", "raise"], ["BB", "raise"]], "SB"), opened, (h) => h.raise), [3.4, 12.9, 83.6], 5);
   });
+
+  /**
+   * A 100bb 3-bettor facing a 4-bet, 5-bets and calls, of the range that 3-bet:
+   * in position it mostly calls; a blind, whose 3-bets are more polarized,
+   * 5-bets far more. Each side's own 3-bets differ, so the caps are looser.
+   */
+  it.each([
+    ["BTN", "CO", [13.2, 54.0], TOLERANCE],
+    ["BTN", "LJ", [10.8, 59.7], 7],
+    ["BB", "CO", [27.3, 36.8], 6],
+    ["BB", "LJ", [22.7, 45.1], 11],
+  ] as const)("a 100bb %s answers a %s 4-bet about as often", (hero, opener, want, tolerance) => {
+    const game = MTT(100);
+    const threeBet = hands(game, [[opener, "raise"]], hero);
+    const answer = hands(game, [[opener, "raise"], [hero, "raise"], [opener, "raise"]], hero);
+    expectNear(ofRange(answer, threeBet, raised).slice(0, 2), [...want], tolerance);
+  });
 });
