@@ -1,5 +1,7 @@
-import type { ActionType, Position } from "@/types/rangeData";
-import type { SolveErrorBody, SolveRequest, SolveResponse } from "@/types/solveApi";
+import { z } from "zod";
+import packageJson from "@/package.json";
+import type { ActionType } from "@/types/rangeData";
+import type { SolveErrorBody, SolveErrorCode, SolveRequest, SolveResponse } from "@/types/solveApi";
 import { SEAT_ORDER } from "@/lib/actionTree/seatOrder";
 import { buildNodeId } from "@/lib/actionTree/nodeId";
 import { STACK_MIN_BB, STACK_MAX_BB } from "@/lib/solveEngine/constants";
@@ -11,13 +13,27 @@ import { computeAvailableActions } from "@/lib/solveEngine/actionSizing";
 import { solveActiveSeat } from "@/lib/solveEngine/solve";
 import { loadEquityMatrix } from "@/lib/equity/loadEquityMatrix";
 
-// No `export const runtime = "edge"` here — loadEquityMatrix uses fs.readFileSync
-// and must run on the Node.js runtime.
-
-const VERSION = "1.0.0";
 const VALID_ACTIONS: ActionType[] = ["fold", "call", "raise", "allin"];
 /** More actions than any hand has: eight seats, each acting a handful of times before the stacks are in. */
 const MAX_ACTION_PATH = 64;
+
+const requestSchema = z.object({
+  effectiveStackBb: z.number().int().min(STACK_MIN_BB).max(STACK_MAX_BB),
+  actionPath: z.array(z.object({ actor: z.enum(SEAT_ORDER), action: z.enum(VALID_ACTIONS) })).max(MAX_ACTION_PATH, `has more than ${MAX_ACTION_PATH} actions`),
+  format: z.string().optional(),
+  rake: z.string().optional(),
+  noFlopNoDrop: z.boolean().optional(),
+  icm: z.string().optional(),
+});
+
+/** The error code a malformed field answers with; anything else is about the action path. */
+const FIELD_ERROR_CODES: Record<string, SolveErrorCode> = {
+  effectiveStackBb: "INVALID_STACK",
+  format: "INVALID_FORMAT",
+  rake: "INVALID_RAKE",
+  noFlopNoDrop: "INVALID_RAKE",
+  icm: "INVALID_ICM",
+};
 
 function errorResponse(status: number, body: SolveErrorBody): Response {
   return Response.json(body, { status });
@@ -28,72 +44,28 @@ type ValidationResult =
   | { ok: false; error: SolveErrorBody };
 
 function validateRequest(body: unknown): ValidationResult {
-  if (typeof body !== "object" || body === null) {
-    return { ok: false, error: { error: "Request body must be an object", code: "INVALID_ACTION_PATH" } };
-  }
-  const b = body as Record<string, unknown>;
-
-  const stack = b.effectiveStackBb;
-  if (
-    typeof stack !== "number" ||
-    !Number.isInteger(stack) ||
-    stack < STACK_MIN_BB ||
-    stack > STACK_MAX_BB
-  ) {
-    return {
-      ok: false,
-      error: {
-        error: `effectiveStackBb must be an integer between ${STACK_MIN_BB} and ${STACK_MAX_BB}`,
-        code: "INVALID_STACK",
-      },
-    };
-  }
-
-  const path = b.actionPath;
-  if (!Array.isArray(path)) {
-    return { ok: false, error: { error: "actionPath must be an array", code: "INVALID_ACTION_PATH" } };
-  }
-  if (path.length > MAX_ACTION_PATH) {
-    return { ok: false, error: { error: `actionPath has more than ${MAX_ACTION_PATH} actions`, code: "INVALID_ACTION_PATH" } };
-  }
-
-  const cleaned: Pick<{ actor: Position; action: ActionType }, "actor" | "action">[] = [];
-  for (const node of path) {
-    if (typeof node !== "object" || node === null) {
-      return { ok: false, error: { error: "Each actionPath entry must be an object", code: "INVALID_ACTION_PATH" } };
+  const parsed = requestSchema.safeParse(body);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const field = String(issue.path[0] ?? "");
+    if (field === "effectiveStackBb") {
+      return { ok: false, error: { error: `effectiveStackBb must be an integer between ${STACK_MIN_BB} and ${STACK_MAX_BB}`, code: "INVALID_STACK" } };
     }
-    const actor = (node as Record<string, unknown>).actor;
-    const action = (node as Record<string, unknown>).action;
-    if (typeof actor !== "string" || !SEAT_ORDER.includes(actor as Position)) {
-      return { ok: false, error: { error: `Invalid actor: ${String(actor)}`, code: "INVALID_ACTION_PATH" } };
-    }
-    if (typeof action !== "string" || !VALID_ACTIONS.includes(action as ActionType)) {
-      return { ok: false, error: { error: `Invalid action: ${String(action)}`, code: "INVALID_ACTION_PATH" } };
-    }
-    cleaned.push({ actor: actor as Position, action: action as ActionType });
+    return { ok: false, error: { error: `${issue.path.join(".") || "body"}: ${issue.message}`, code: FIELD_ERROR_CODES[field] ?? "INVALID_ACTION_PATH" } };
   }
+  const b = parsed.data;
 
-  const format = b.format === undefined ? TOURNAMENT_8 : gameFormatById(String(b.format));
-  if (!format) {
-    return { ok: false, error: { error: `Unknown format: ${String(b.format)}`, code: "INVALID_FORMAT" } };
-  }
+  const format = b.format === undefined ? TOURNAMENT_8 : gameFormatById(b.format);
+  if (!format) return { ok: false, error: { error: `Unknown format: ${b.format}`, code: "INVALID_FORMAT" } };
 
-  const structure = b.rake === undefined ? NO_RAKE : rakeById(String(b.rake));
-  if (!structure) {
-    return { ok: false, error: { error: `Unknown rake: ${String(b.rake)}`, code: "INVALID_RAKE" } };
-  }
-  const noFlopNoDrop = b.noFlopNoDrop ?? true;
-  if (typeof noFlopNoDrop !== "boolean") {
-    return { ok: false, error: { error: "noFlopNoDrop must be a boolean", code: "INVALID_RAKE" } };
-  }
-  const rake = { structure: format.allowsRake ? structure : NO_RAKE, noFlopNoDrop };
+  const structure = b.rake === undefined ? NO_RAKE : rakeById(b.rake);
+  if (!structure) return { ok: false, error: { error: `Unknown rake: ${b.rake}`, code: "INVALID_RAKE" } };
+  const rake = { structure: format.allowsRake ? structure : NO_RAKE, noFlopNoDrop: b.noFlopNoDrop ?? true };
 
-  const icm = b.icm === undefined ? CHIP_EV : icmById(String(b.icm));
-  if (!icm) {
-    return { ok: false, error: { error: `Unknown icm: ${String(b.icm)}`, code: "INVALID_ICM" } };
-  }
+  const icm = b.icm === undefined ? CHIP_EV : icmById(b.icm);
+  if (!icm) return { ok: false, error: { error: `Unknown icm: ${b.icm}`, code: "INVALID_ICM" } };
 
-  return { ok: true, value: { effectiveStackBb: stack, actionPath: cleaned, format, rake, icm: format.allowsIcm ? icm : CHIP_EV } };
+  return { ok: true, value: { effectiveStackBb: b.effectiveStackBb, actionPath: b.actionPath, format, rake, icm: format.allowsIcm ? icm : CHIP_EV } };
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -138,7 +110,7 @@ export async function POST(request: Request): Promise<Response> {
       source,
       ...(isChipEv(icm) ? {} : { icm: icm.id }),
       generatedAt: new Date().toISOString(),
-      version: VERSION,
+      version: packageJson.version,
       hands,
       potBb: potState.potBb,
       currentBetToCall: potState.currentBetToCall,
