@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadEquityMatrix } from "./loadEquityMatrix";
-import { BASE_PLAYABILITY, computePlayabilityRanking, equityVsRandom, playabilityAt } from "./handStrength";
+import { BASE_PLAYABILITY, computePlayabilityRanking, computeRangePlayabilityRanking, equityVsRandom, equityVsRange, playabilityAt } from "./handStrength";
 
 describe("handStrength", () => {
   const matrix = loadEquityMatrix();
@@ -42,6 +42,21 @@ describe("handStrength", () => {
     expect(playabilityAt(150)).toEqual(playabilityAt(100));
     expect(playabilityAt(70).bonusScale).toBeCloseTo((playabilityAt(40).bonusScale + playabilityAt(100).bonusScale) / 2, 9);
     expect(computePlayabilityRanking(matrix, BASE_PLAYABILITY)).toEqual(ranking);
+  });
+
+  it("takes equity against a range, and against a random hand when the range is empty", () => {
+    const tight = new Map(["AA", "KK", "QQ", "AKs", "AKo", "AQs", "KQs"].map((h) => [h, 1]));
+    expect(equityVsRange(matrix, "KTo", tight)).toBeLessThan(equityVsRandom(matrix, "KTo") - 0.1);
+    expect(equityVsRange(matrix, "65s", tight)).toBeGreaterThan(equityVsRange(matrix, "KTo", tight));
+    expect(equityVsRange(matrix, "KTo", new Map())).toBe(equityVsRandom(matrix, "KTo"));
+  });
+
+  it("ranks hands an opener's range dominates lower against that range", () => {
+    const tight = new Map(["AA", "KK", "QQ", "JJ", "TT", "AKs", "AKo", "AQs", "AQo", "AJs", "KQs", "KQo", "ATs"].map((h) => [h, 1]));
+    const vsRange = computeRangePlayabilityRanking(matrix, tight, 1);
+    expect(vsRange.get("KTo")!).toBeGreaterThan(ranking.get("KTo")!);
+    expect(vsRange.get("65s")!).toBeLessThan(vsRange.get("KTo")!);
+    expect(computeRangePlayabilityRanking(matrix, tight, 0)).toEqual(ranking);
   });
 
   it("orders pocket pairs by rank", () => {

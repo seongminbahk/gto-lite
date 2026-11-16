@@ -1,5 +1,6 @@
 import type { EquityMatrix } from "@/lib/equity/loadEquityMatrix";
-import { BASE_PLAYABILITY, computePlayabilityRanking, playabilityAt } from "@/lib/equity/handStrength";
+import { BASE_PLAYABILITY, computePlayabilityRanking, computeRangePlayabilityRanking, playabilityAt } from "@/lib/equity/handStrength";
+import { ALL_HANDS } from "@/lib/handRange/handList";
 import { solvePushFold, type PushFoldResult } from "@/lib/nashSolver/pushFoldSolver";
 import { BB_ANTE_BB, BIG_BLIND_BB, SMALL_BLIND_BB } from "./constants";
 import { NO_RAKE_SETTINGS, type RakeSettings } from "./rake";
@@ -27,6 +28,34 @@ export function getPlayabilityRanking(matrix: EquityMatrix, effectiveStackBb?: n
   if (!ranking) {
     ranking = computePlayabilityRanking(matrix, depth);
     byDepth.set(key, ranking);
+  }
+  return ranking;
+}
+
+const rangeRankingsByMatrix = new WeakMap<EquityMatrix, Map<string, Map<string, number>>>();
+const RANGE_RANKING_CACHE_LIMIT = 256;
+
+/** getPlayabilityRanking with `weight` of the equity taken against `range` (see computeRangePlayabilityRanking). */
+export function getRangePlayabilityRanking(
+  matrix: EquityMatrix,
+  range: ReadonlyMap<string, number>,
+  weight: number,
+  effectiveStackBb?: number,
+): Map<string, number> {
+  const depth = effectiveStackBb === undefined ? BASE_PLAYABILITY : playabilityAt(effectiveStackBb);
+  const rangeKey = ALL_HANDS.map((h) => range.get(h.hand) ?? 0).join(",");
+  const key = `${weight}|${depth.bonusScale}|${depth.smallPairExtra}|${depth.suitedConnectorExtra}|${rangeKey}`;
+  let byKey = rangeRankingsByMatrix.get(matrix);
+  if (!byKey) {
+    byKey = new Map();
+    rangeRankingsByMatrix.set(matrix, byKey);
+  }
+  let ranking = byKey.get(key);
+  if (!ranking) {
+    ranking = computeRangePlayabilityRanking(matrix, range, weight, depth);
+    // Opener ranges vary with the stack, rake and ICM a request names, so keep the cache from growing without end.
+    if (byKey.size >= RANGE_RANKING_CACHE_LIMIT) byKey.clear();
+    byKey.set(key, ranking);
   }
   return ranking;
 }

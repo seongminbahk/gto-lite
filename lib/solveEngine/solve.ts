@@ -21,7 +21,7 @@ import { NO_RAKE_SETTINGS, rakeShare, type RakeSettings } from "./rake";
 import { shouldUseNash } from "./classify";
 import { BIG_BLIND_BB, SMALL_BLIND_BB } from "./constants";
 import { CHIP_EV, equalStackBubbleFactor, type IcmStructure } from "./icm";
-import { getPlayabilityRanking, getPushFoldResult } from "./solveCache";
+import { getPlayabilityRanking, getPushFoldResult, getRangePlayabilityRanking } from "./solveCache";
 
 export interface SolvedNode {
   hands: HandFrequency[];
@@ -224,8 +224,17 @@ function solveFirstIn(ctx: SpotContext): SolvedNode {
   };
 }
 
+/** Facing an open, a seat that isn't a blind ranks its hands partly by their equity against the opener's range. */
+function facingRaiseRanking(ctx: FacingRaiseContext): Map<string, number> {
+  const stack = ctx.format.playabilityByStack ? ctx.effectiveStackBb : undefined;
+  const weight = ctx.format.coldCallRangeEquityWeight ?? 0;
+  const coldCall = ctx.potState.raiseDepth === 1 && !ctx.isBlind && !ctx.ownDecision;
+  if (weight === 0 || !coldCall || !ctx.villainRange || shareOfCombos(ctx.villainRange) === 0) return getPlayabilityRanking(ctx.matrix, stack);
+  return getRangePlayabilityRanking(ctx.matrix, ctx.villainRange, weight, stack);
+}
+
 function solveFacingRaise(ctx: FacingRaiseContext): SolvedNode {
-  const ranking = getPlayabilityRanking(ctx.matrix, ctx.format.playabilityByStack ? ctx.effectiveStackBb : undefined);
+  const ranking = facingRaiseRanking(ctx);
   const hands = handsFacingRaise(ctx)
     ? generateVsReraiseScenario(ctx.matrix, ranking, vsReraiseParams(ctx, ctx.heroRange, ctx.villainRange))
     : generateFacingRaiseScenario(ranking, facingRaiseParams(ctx));

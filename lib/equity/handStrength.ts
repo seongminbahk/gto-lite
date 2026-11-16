@@ -17,6 +17,19 @@ export function equityVsRandom(matrix: EquityMatrix, hand: string): number {
   return weighted / TOTAL_COMBOS;
 }
 
+/** Combo-weighted equity of `hand` against `range` (hand -> frequency); against a random hand when the range is empty. */
+export function equityVsRange(matrix: EquityMatrix, hand: string, range: ReadonlyMap<string, number>): number {
+  let weighted = 0;
+  let combos = 0;
+  for (const villain of ALL_HANDS) {
+    const weight = (range.get(villain.hand) ?? 0) * villain.combos;
+    if (weight === 0) continue;
+    weighted += equityOf(matrix, hand, villain.hand) * weight;
+    combos += weight;
+  }
+  return combos > 0 ? weighted / combos : equityVsRandom(matrix, hand);
+}
+
 /** Equity bonuses for hands that play better postflop than their all-in equity says. */
 const SUITED_BONUS = 0.04;
 const CONNECTED_BONUS_BY_GAP = [0.045, 0.03, 0.012]; // index = rank gap - 1
@@ -94,9 +107,33 @@ function depthBonus(h: CanonicalHand, depth: PlayabilityDepth): number {
  * Push/fold doesn't use it, since its hands never play postflop.
  */
 export function computePlayabilityRanking(matrix: EquityMatrix, depth: PlayabilityDepth = BASE_PLAYABILITY): Map<string, number> {
-  const scored = ALL_HANDS.map((h) => ({ hand: h, score: equityVsRandom(matrix, h.hand) + depthBonus(h, depth) }));
-  scored.sort((a, b) => b.score - a.score);
+  return percentilesOf(ALL_HANDS.map((h) => ({ hand: h, score: equityVsRandom(matrix, h.hand) + depthBonus(h, depth) })));
+}
 
+/**
+ * The playability ranking with `weight` of the equity taken against `range`
+ * instead of a random hand. Facing an open, a hand the opener's range
+ * dominates (KTo against AK, KQ, AT) wins less than its equity against a
+ * random hand says, while a suited connector loses little: a solver's cold
+ * caller flats 65s and 86s and folds KTo against an early open.
+ */
+export function computeRangePlayabilityRanking(
+  matrix: EquityMatrix,
+  range: ReadonlyMap<string, number>,
+  weight: number,
+  depth: PlayabilityDepth = BASE_PLAYABILITY,
+): Map<string, number> {
+  return percentilesOf(
+    ALL_HANDS.map((h) => ({
+      hand: h,
+      score: (1 - weight) * equityVsRandom(matrix, h.hand) + weight * equityVsRange(matrix, h.hand, range) + depthBonus(h, depth),
+    })),
+  );
+}
+
+/** Best score first, each hand at the middle of its combos' share. */
+function percentilesOf(scored: { hand: CanonicalHand; score: number }[]): Map<string, number> {
+  scored.sort((a, b) => b.score - a.score);
   const ranking = new Map<string, number>();
   let combosAbove = 0;
   for (const { hand } of scored) {

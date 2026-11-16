@@ -107,6 +107,13 @@ describe("against public solver ranges", () => {
     }
   });
 
+  /** Against an early open, the hands its range dominates fold and suited connectors flat, as the public ranges' do. */
+  it("a 100bb button cold caller keeps suited connectors over dominated offsuit hands against UTG", () => {
+    const btn = new Map(hands(MTT(100), [["UTG", "raise"]], "BTN").map((h) => [h.hand, 1 - h.fold]));
+    for (const hand of ["86s", "75s", "65s", "54s"]) expect(btn.get(hand), hand).toBeGreaterThan(0.9);
+    for (const hand of ["QTo", "KTo"]) expect(btn.get(hand), hand).toBeLessThan(0.5);
+  });
+
   /** An opener out of position on a button 3-bet 4-bets far more than against a blind's; the share of its range that got there. */
   it.each([
     ["tournament 100bb", MTT(100), { UTG: 16.8, LJ: 19.4, HJ: 19.2, CO: 17.8 }],
