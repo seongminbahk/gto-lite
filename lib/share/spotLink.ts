@@ -5,6 +5,7 @@ import { TOURNAMENT_8, gameFormatById, type GameFormat } from "@/lib/solveEngine
 import { CHIP_EV, icmById, type IcmStructure } from "@/lib/solveEngine/icm";
 import { DEFAULT_RAKE_SETTINGS, rakeById, type RakeSettings } from "@/lib/solveEngine/rake";
 import { replayActionPath } from "@/lib/solveEngine/replay";
+import { formatRangeText, parseRangeText } from "@/lib/handRange/rangeText";
 
 /** The table a hand is played at. */
 export interface SpotSettings {
@@ -27,6 +28,8 @@ export interface PreflopStep {
 export interface PostflopLine {
   board: string[];
   streets: string[][];
+  /** Ranges the user entered in place of the chart's, as text (see formatRangeText), by seat: P1 acts first postflop. */
+  ranges?: { P1?: string; P2?: string };
 }
 
 /** Everything a link has to carry to show the same spot again. */
@@ -46,7 +49,8 @@ const TOKEN = /^(x|f|c|a|[br]\d+(\.\d+)?)$/;
 /** Bet and raise labels carry one decimal, so a token and an action half a step apart are the same size. */
 const SIZE_TOLERANCE_BB = 0.06;
 /** The keys a link uses. A page address with none of them isn't a shared spot. */
-const KEYS = ["f", "s", "rk", "nfnd", "icm", "p", "b", "l"] as const;
+const KEYS = ["f", "s", "rk", "nfnd", "icm", "p", "b", "l", "r1", "r2"] as const;
+const RANGE_KEYS = { P1: "r1", P2: "r2" } as const;
 
 /**
  * A postflop action as a link writes it: x check, f fold, c call, a all-in,
@@ -106,8 +110,12 @@ export function encodeSpot({ settings, path, postflop }: Spot): string {
     params.set("b", postflop.board.join(""));
     if (postflop.streets.some((street) => street.length > 0)) params.set("l", postflop.streets.map((street) => street.join("-")).join("/"));
   }
-  // Card and action tokens are URL-safe as they are; keep the separators readable.
-  return params.toString().replaceAll("%2F", "/");
+  for (const [seat, key] of Object.entries(RANGE_KEYS) as [keyof typeof RANGE_KEYS, string][]) {
+    const range = postflop.ranges?.[seat];
+    if (range) params.set(key, range);
+  }
+  // Keep the separators readable. A range's "+" stays escaped: a bare one reads back as a space.
+  return params.toString().replaceAll("%2F", "/").replaceAll("%2C", ",").replaceAll("%3A", ":");
 }
 
 /** `search` with its spot replaced by `spotQuery` (from encodeSpot). Whatever else it carries, a campaign tag say, stays. */
@@ -180,5 +188,15 @@ export function decodeSpot(search: string, fallback: SpotSettings = DEFAULT_SETT
       if (firstBad >= 0) break;
     }
   }
-  return { settings: { stackBb, format, rake, icm }, path, postflop: { board, streets } };
+  const postflop: PostflopLine = { board, streets };
+  // Ranges only mean something once the preflop action has closed, and only ones that read.
+  if (replayActionPath(path, stackBb, format).status === "resolved") {
+    const ranges: NonNullable<PostflopLine["ranges"]> = {};
+    for (const [seat, key] of Object.entries(RANGE_KEYS) as [keyof typeof RANGE_KEYS, string][]) {
+      const parsed = parseRangeText(params.get(key) ?? "");
+      if (parsed.ok) ranges[seat] = formatRangeText(parsed.weights);
+    }
+    if (Object.keys(ranges).length > 0) postflop.ranges = ranges;
+  }
+  return { settings: { stackBb, format, rake, icm }, path, postflop };
 }

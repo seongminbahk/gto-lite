@@ -2,6 +2,7 @@ import type { GameFormatId } from "@/lib/solveEngine/gameFormat";
 import type { IcmId } from "@/lib/solveEngine/icm";
 import type { RakeId } from "@/lib/solveEngine/rake";
 import type { StreetLabel } from "@/components/PostflopBoard/streetLabel";
+import type { RangeTextError } from "@/lib/handRange/rangeText";
 
 export type Locale = "en" | "ko";
 
@@ -105,6 +106,29 @@ const en = {
     streetDetails: "Show this street's details",
     allInNote: (bb: string) => `All-in — hand is already decided, pot ${bb}bb runs out to showdown automatically.`,
     linkStopped: "This link's line couldn't be followed any further: the solver no longer offers one of its actions. Continue from here.",
+
+  },
+  ranges: {
+    title: "Ranges going to the flop",
+    hint: "These come from the preflop charts, which are approximate. Tap a range to change it, or carry on with it as is.",
+    size: (combos: string, share: string) => `${combos} combos · ${share} of hands`,
+    chart: "Preflop chart",
+    edited: "Edited",
+    edit: (seat: string) => `Edit ${seat}'s range`,
+    continue: "Pick the flop with these ranges",
+    review: "Review ranges",
+    summary: (seat: string, edited: boolean) => `${seat}: ${edited ? "edited" : "preflop chart"}`,
+    editorHint: "Paste a range (AA, AKs:0.5, 22+, T9s-65s, …) or tap hands on the grid to add or take them out.",
+    text: "Range as text",
+    reset: "Back to the chart",
+    cancel: "Cancel",
+    apply: "Apply",
+    errors: {
+      unknown: (token: string) => `Couldn't read "${token}".`,
+      combo: (token: string) => `"${token}" is a single combo: enter whole hands (AKs, AKo).`,
+      weight: (token: string) => `"${token}": a weight goes from 0 to 1, or 0% to 100%.`,
+      empty: () => "The range is empty.",
+    } satisfies Record<RangeTextError, (token: string) => string>,
   },
   solve: {
     runningCfr: "Running CFR",
@@ -280,6 +304,29 @@ const ko: Messages = {
     streetDetails: "이 스트리트 상세 보기",
     allInNote: (bb) => `올인 — 이미 결정된 핸드라 팟 ${bb}bb는 자동으로 쇼다운까지 진행됩니다.`,
     linkStopped: "이 링크의 라인을 끝까지 따라가지 못했습니다. 솔버에 그 액션이 더 이상 없습니다. 여기서부터 이어서 보세요.",
+
+  },
+  ranges: {
+    title: "플랍으로 가는 레인지",
+    hint: "프리플랍 차트에서 온 레인지라 근사치입니다. 레인지를 눌러 바꾸거나, 그대로 진행하세요.",
+    size: (combos, share) => `${combos}콤보 · 전체의 ${share}`,
+    chart: "프리플랍 차트",
+    edited: "직접 수정",
+    edit: (seat) => `${seat} 레인지 바꾸기`,
+    continue: "이 레인지로 플랍 고르기",
+    review: "레인지 다시 보기",
+    summary: (seat, edited) => `${seat}: ${edited ? "직접 수정" : "프리플랍 차트"}`,
+    editorHint: "레인지를 붙여 넣거나(AA, AKs:0.5, 22+, T9s-65s, …) 격자에서 손을 눌러 넣고 빼세요.",
+    text: "레인지 텍스트",
+    reset: "차트로 되돌리기",
+    cancel: "취소",
+    apply: "적용",
+    errors: {
+      unknown: (token) => `"${token}"을(를) 읽지 못했습니다.`,
+      combo: (token) => `"${token}"은(는) 콤보 하나입니다. 손 단위(AKs, AKo)로 넣어 주세요.`,
+      weight: (token) => `"${token}": 비율은 0~1 또는 0%~100%입니다.`,
+      empty: () => "레인지가 비어 있습니다.",
+    },
   },
   solve: {
     runningCfr: "CFR 실행 중",

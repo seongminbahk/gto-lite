@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useEffectEvent, useState } from "react";
+import { Fragment, useEffect, useEffectEvent, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { BoardPicker } from "./BoardPicker";
 import { CardChip } from "./CardChip";
@@ -24,6 +24,10 @@ import { useStreetStages } from "./useStreetStages";
 import { lineOf, useLineRestore } from "./useLineRestore";
 import type { PostflopLine } from "@/lib/share/spotLink";
 import { useMessages } from "@/lib/i18n/locale";
+import { weightsOfHands, type RangeWeights } from "@/lib/handRange/rangeText";
+import { RangeReview, RangeSummaryLine, type RangeSeat, type ReviewedRange } from "./RangeReview";
+import { RangeEditor } from "./RangeEditor";
+import { rangeEditsFromLine, rangeEditsToLine, sameRange, withRangeEdits, type RangeEdits } from "./rangeEdits";
 
 interface PostflopPanelProps {
   heroLabel: string;
@@ -59,7 +63,20 @@ const ENDED_SECONDARY = `${ENDED_BUTTON} border border-line-strong text-ink hove
 
 export function PostflopPanel(props: PostflopPanelProps) {
   const t = useMessages();
-  const { streets, navigate, resetStreet, pickDifferentBoard, confirmBoard } = useStreetStages(props);
+  // The ranges go to the flop as the charts give them unless the user enters others first; a link's own play back as they are.
+  const [rangeEdits, setRangeEdits] = useState<RangeEdits>(() => rangeEditsFromLine(props.initialLine));
+  const [rangesReviewed, setRangesReviewed] = useState(() => (props.initialLine?.board.length ?? 0) > 0);
+  const [editingSeat, setEditingSeat] = useState<RangeSeat | null>(null);
+  const heroChart = useMemo(() => weightsOfHands(props.heroHands, props.heroActionKey), [props.heroHands, props.heroActionKey]);
+  const villainChart = useMemo(() => weightsOfHands(props.villainHands, props.villainActionKey), [props.villainHands, props.villainActionKey]);
+  const charts: Record<RangeSeat, RangeWeights> = { P1: heroChart, P2: villainChart };
+  const reviewedRanges: ReviewedRange[] = (["P1", "P2"] as const).map((seat) => ({
+    seat,
+    label: seat === "P1" ? props.heroLabel : props.villainLabel,
+    weights: rangeEdits[seat] ?? charts[seat],
+    edited: rangeEdits[seat] !== undefined,
+  }));
+  const { streets, navigate, resetStreet, pickDifferentBoard, confirmBoard } = useStreetStages(withRangeEdits(props, rangeEdits));
   const [fastFlop, setFastFlop] = useState(() => navigator.hardwareConcurrency <= FAST_FLOP_MAX_CORES);
   const [selectedHand, setSelectedHand] = useState<string | null>(null);
   const [isolatedActionIndex, setIsolatedActionIndex] = useState<number | null>(null);
@@ -70,8 +87,9 @@ export function PostflopPanel(props: PostflopPanelProps) {
   });
 
   // A line half played back would overwrite the link it came from, so the address waits for the replay.
-  const lineKey = JSON.stringify(lineOf(streets));
-  const reportLine = useEffectEvent(() => props.onLineChange?.(lineOf(streets)));
+  const line = { ...lineOf(streets), ...rangeEditsToLine(rangeEdits) };
+  const lineKey = JSON.stringify(line);
+  const reportLine = useEffectEvent(() => props.onLineChange?.(line));
   useEffect(() => {
     if (!restore.restoring) reportLine();
   }, [lineKey, restore.restoring]);
@@ -107,6 +125,16 @@ export function PostflopPanel(props: PostflopPanelProps) {
     resetGridSelection();
     setExpandedPastStage(null);
     pickDifferentBoard(stageIndex);
+  }
+
+  function handleRangeApply(seat: RangeSeat, weights: RangeWeights) {
+    setRangeEdits((prev) => {
+      const next = { ...prev };
+      if (sameRange(weights, charts[seat])) delete next[seat];
+      else next[seat] = weights;
+      return next;
+    });
+    setEditingSeat(null);
   }
 
   function handleBoardConfirm(stageIndex: number, cards: string[]) {
@@ -173,7 +201,7 @@ export function PostflopPanel(props: PostflopPanelProps) {
             villainLabel={props.villainLabel}
             rake={props.rake}
             actions={links}
-            explain={props.explain}
+            explain={props.explain && { ...props.explain, rangesEdited: { oop: rangeEdits.P1 !== undefined, ip: rangeEdits.P2 !== undefined } }}
           />
         )}
         {currentNode.type === "chance" && (
@@ -295,7 +323,26 @@ export function PostflopPanel(props: PostflopPanelProps) {
           </p>
         )}
 
-        {live.state.kind === "idle" && !restore.restoring && (
+        {live.state.kind === "idle" && !restore.restoring && liveIsFlop && editingSeat !== null && (
+          <RangeEditor
+            key={editingSeat}
+            label={reviewedRanges.find((r) => r.seat === editingSeat)!.label}
+            initial={reviewedRanges.find((r) => r.seat === editingSeat)!.weights}
+            chart={charts[editingSeat]}
+            onApply={(weights) => handleRangeApply(editingSeat, weights)}
+            onCancel={() => setEditingSeat(null)}
+          />
+        )}
+
+        {live.state.kind === "idle" && !restore.restoring && liveIsFlop && editingSeat === null && !rangesReviewed && (
+          <RangeReview ranges={reviewedRanges} onEdit={setEditingSeat} onContinue={() => setRangesReviewed(true)} />
+        )}
+
+        {live.state.kind === "idle" && !restore.restoring && liveIsFlop && editingSeat === null && rangesReviewed && (
+          <RangeSummaryLine ranges={reviewedRanges} onReview={() => setRangesReviewed(false)} />
+        )}
+
+        {live.state.kind === "idle" && !restore.restoring && (!liveIsFlop || (rangesReviewed && editingSeat === null)) && (
           <BoardPicker
             key={liveIndex}
             count={liveIsFlop ? 3 : 1}
@@ -306,7 +353,7 @@ export function PostflopPanel(props: PostflopPanelProps) {
           />
         )}
 
-        {live.state.kind === "idle" && !restore.restoring && liveIsFlop && (
+        {live.state.kind === "idle" && !restore.restoring && liveIsFlop && rangesReviewed && editingSeat === null && (
           <label className="flex items-center gap-1.5 text-xs text-ink-muted">
             <input type="checkbox" checked={fastFlop} onChange={(e) => setFastFlop(e.target.checked)} />
             {t.postflop.fastFlop}

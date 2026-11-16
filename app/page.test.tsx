@@ -112,7 +112,7 @@ describe("Home", () => {
     const retry = await screen.findByRole("button", { name: "Retry" });
     failing.current = false;
     fireEvent.click(retry);
-    expect(await screen.findByText(/Pick the 3 flop cards/)).toBeInTheDocument();
+    expect(await screen.findByTestId("range-review")).toBeInTheDocument();
   });
 
   it("keeps the hand on screen when a request fails, with a way to retry or start over", async () => {

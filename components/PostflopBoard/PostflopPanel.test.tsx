@@ -240,8 +240,15 @@ function Harness(props: Omit<ComponentProps<typeof PostflopPanel>, "streetBarSlo
   );
 }
 
+/** Past the range review, to the flop picker: what most tests start from. */
+function continueToFlop() {
+  fireEvent.click(screen.getByRole("button", { name: "Pick the flop with these ranges" }));
+}
+
 function renderPanel(effectiveStackBb: number) {
-  return render(<Harness {...baseProps(effectiveStackBb)} />);
+  const rendered = render(<Harness {...baseProps(effectiveStackBb)} />);
+  continueToFlop();
+  return rendered;
 }
 
 function liveStage() {
@@ -869,12 +876,100 @@ describe("PostflopPanel opened from a shared link", () => {
     expect(within(liveStage()).getByText(/Pick the 3 flop cards/)).toBeInTheDocument();
   });
 
-  it("opens on the board picker, and reports an empty line, without a board to deal", async () => {
+  it("opens on the range review, and reports an empty line, without a board to deal", async () => {
     const onLineChange = vi.fn();
     render(<Harness {...baseProps(20)} initialLine={{ board: [], streets: [] }} onLineChange={onLineChange} />);
-    expect(within(liveStage()).getByText(/Pick the 3 flop cards/)).toBeInTheDocument();
+    expect(within(liveStage()).getByTestId("range-review")).toBeInTheDocument();
     expect(solvePostflopInWorker).not.toHaveBeenCalled();
     expect(onLineChange).toHaveBeenLastCalledWith({ board: [], streets: [] });
   });
 });
 
+describe("PostflopPanel ranges before the flop", () => {
+  const CHART: HandFrequency[] = [
+    { hand: "AA", fold: 0, call: 0.25, raise: 0.75 },
+    { hand: "KK", fold: 0.5, call: 0.5, raise: 0 },
+  ];
+  const props = { ...baseProps(20), heroHands: CHART, heroActionKey: "raise" as const };
+  const weightOf = (seat: string, hand: string) =>
+    Number(within(screen.getByTestId(`range-${seat}`)).getAllByTestId("weight-cell").find((c) => c.dataset.hand === hand)!.dataset.weight);
+
+  it("shows both ranges as the chart gives them before the flop picker", () => {
+    render(<Harness {...props} />);
+    expect(within(liveStage()).queryByText(/Pick the 3 flop cards/)).not.toBeInTheDocument();
+    expect(weightOf("P1", "AA")).toBe(0.75);
+    expect(weightOf("P1", "KK")).toBe(0);
+    expect(within(screen.getByTestId("range-P2")).getByText("Preflop chart")).toBeInTheDocument();
+    continueToFlop();
+    expect(within(liveStage()).getByText(/Pick the 3 flop cards/)).toBeInTheDocument();
+    expect(screen.getByTestId("range-summary")).toHaveTextContent("BTN: preflop chart · BB: preflop chart");
+  });
+
+  it("solves with a range pasted in, marks it edited, and puts it in the line", async () => {
+    solvePostflopInWorker.mockResolvedValue(checkCheckFlopResult({ P1: 0, P2: 0 }));
+    const onLineChange = vi.fn();
+    render(<Harness {...props} onLineChange={onLineChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit BB's range" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Range as text" }), { target: { value: "QQ+, AKs:0.5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(within(screen.getByTestId("range-P2")).getByText("Edited")).toBeInTheDocument();
+    expect(onLineChange).toHaveBeenLastCalledWith({ board: [], streets: [], ranges: { P2: "QQ+,AKs:0.5" } });
+
+    continueToFlop();
+    expect(screen.getByTestId("range-summary")).toHaveTextContent("BB: edited");
+    pickFlopBoard();
+    await screen.findByRole("button", { name: "Check" });
+    const request = solvePostflopInWorker.mock.calls[0][0] as Extract<PostflopSolveRequest, { kind: "canonical" }>;
+    expect(request.villainActionKey).toBe("call");
+    const villain = new Map(request.villainHandFrequencies.map((h) => [h.hand, h.call]));
+    expect([villain.get("AA"), villain.get("QQ"), villain.get("AKs"), villain.get("AKo")]).toEqual([1, 1, 0.5, 0]);
+    // The chart's own seat goes as it came.
+    expect(request.heroHandFrequencies).toBe(CHART);
+  });
+
+  it("toggles hands on the editor's grid, keeps a bad paste from applying, and goes back to the chart", () => {
+    render(<Harness {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit BTN's range" }));
+    const editor = screen.getByTestId("range-editor");
+    const text = within(editor).getByRole("textbox", { name: "Range as text" });
+    expect(text).toHaveValue("AA:0.75");
+    fireEvent.click(within(editor).getAllByTestId("weight-cell").find((c) => c.dataset.hand === "KK")!);
+    expect(text).toHaveValue("AA:0.75,KK");
+
+    fireEvent.change(text, { target: { value: "AA, AhKh" } });
+    expect(within(editor).getByRole("alert")).toHaveTextContent('"AhKh" is a single combo');
+    expect(within(editor).getByRole("button", { name: "Apply" })).toBeDisabled();
+
+    fireEvent.click(within(editor).getByRole("button", { name: "Back to the chart" }));
+    expect(text).toHaveValue("AA:0.75");
+    fireEvent.click(within(editor).getByRole("button", { name: "Apply" }));
+    // Applying the chart's own range is no edit at all.
+    expect(within(screen.getByTestId("range-P1")).getByText("Preflop chart")).toBeInTheDocument();
+  });
+
+  it("cancels an edit without changing the range", () => {
+    render(<Harness {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit BB's range" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Range as text" }), { target: { value: "72o" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(weightOf("P2", "AA")).toBe(1);
+    expect(weightOf("P2", "72o")).toBe(0);
+  });
+
+  it("goes back to the review from the flop picker", () => {
+    render(<Harness {...props} />);
+    continueToFlop();
+    fireEvent.click(screen.getByRole("button", { name: "Review ranges" }));
+    expect(screen.getByTestId("range-review")).toBeInTheDocument();
+  });
+
+  it("plays a link's line back with the link's ranges, without stopping at the review", async () => {
+    solvePostflopInWorker.mockResolvedValue(checkCheckFlopResult({ P1: 0, P2: 0 }));
+    render(<Harness {...props} initialLine={{ board: ["As", "Kd", "Qh"], streets: [], ranges: { P1: "KK" } }} />);
+    await waitFor(() => expect(solvePostflopInWorker).toHaveBeenCalled());
+    expect(screen.queryByTestId("range-review")).not.toBeInTheDocument();
+    const request = solvePostflopInWorker.mock.calls[0][0] as Extract<PostflopSolveRequest, { kind: "canonical" }>;
+    expect(request.heroHandFrequencies.find((h) => h.hand === "KK")!.call).toBe(1);
+    expect(request.heroHandFrequencies.find((h) => h.hand === "AA")!.call).toBe(0);
+  });
+});

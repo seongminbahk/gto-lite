@@ -52,6 +52,8 @@ describe("decodeSpot", () => {
       postflop: EMPTY_LINE,
     },
     { settings: DEFAULT_SETTINGS, path: BTN_VS_BB, postflop: { board: ["Kh", "7s", "2d", "9c", "3s"], streets: [["x", "x"], ["b5", "c"], ["a", "f"]] } },
+    { settings: DEFAULT_SETTINGS, path: BTN_VS_BB, postflop: { board: [], streets: [], ranges: { P2: "22+,ATs+,KQo:0.5" } } },
+    { settings: DEFAULT_SETTINGS, path: BTN_VS_BB, postflop: { board: ["Kh", "7s", "2d"], streets: [[]], ranges: { P1: "AA", P2: "99-66,T9s:0.25" } } },
   ];
 
   it.each(spots)("reads back what encodeSpot wrote: $path.length preflop actions", (spot) => {
@@ -68,6 +70,16 @@ describe("decodeSpot", () => {
     expect(decodeSpot("p=c").path).toEqual([]);
     // Everyone folds to the BB, and nothing can follow that.
     expect(decodeSpot("p=fffffffr").path).toHaveLength(7);
+  });
+
+  it("writes ranges readably, keeps their plus signs, and drops one that doesn't read or comes before the flop", () => {
+    const postflop = { board: [], streets: [], ranges: { P1: "22+,AKs:0.5" } };
+    const query = encodeSpot({ settings: DEFAULT_SETTINGS, path: BTN_VS_BB, postflop });
+    expect(query).toBe("p=fffffrfc&r1=22%2B,AKs:0.5");
+    expect(decodeSpot("p=fffffrfc&r1=AhKh&r2=AA").postflop.ranges).toEqual({ P2: "AA" });
+    expect(decodeSpot("p=fffffr&r1=AA").postflop.ranges).toBeUndefined();
+    // Written as the editor writes it, however the link spelled it.
+    expect(decodeSpot("p=fffffrfc&r2=aa,kk,qq").postflop.ranges).toEqual({ P2: "QQ+" });
   });
 
   it("falls back to the defaults for values it doesn't know", () => {
