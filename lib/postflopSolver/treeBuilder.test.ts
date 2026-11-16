@@ -57,7 +57,7 @@ describe("buildStreetTree — flop (4 bet sizes, 1 raise size)", () => {
     expect(findAction(afterP2Bet, "call").type).toBe("terminal-showdown");
   });
 
-  it("betting immediately gives the opponent fold/call/raise/allin, then raising caps further action to fold/call", () => {
+  it("betting immediately gives the opponent fold/call/raise/allin, the bettor a re-raise, then the cap leaves fold/call", () => {
     const tree = buildStreetTree(7.5, 97, "flop");
     const afterP1Bet = findNthAction(tree, "bet", 0);
     expect(afterP1Bet.type).toBe("decision");
@@ -69,10 +69,17 @@ describe("buildStreetTree — flop (4 bet sizes, 1 raise size)", () => {
     expect(afterP2Raise.type).toBe("decision");
     if (afterP2Raise.type !== "decision") return;
     expect(afterP2Raise.actor).toBe("P1");
-    // Raise cap reached: only fold/call remain, both terminal.
-    expect(actionCounts(afterP2Raise)).toEqual({ fold: 1, call: 1 });
+    // One raise in: the bettor may re-raise.
+    expect(actionCounts(afterP2Raise)).toEqual({ fold: 1, call: 1, raise: 1, allin: 1 });
     expect(findAction(afterP2Raise, "fold").type).toBe("terminal-fold");
     expect(findAction(afterP2Raise, "call").type).toBe("terminal-showdown");
+
+    // Raise cap reached: only fold/call remain, both terminal.
+    const afterP1Reraise = findAction(afterP2Raise, "raise");
+    if (afterP1Reraise.type !== "decision") throw new Error("expected decision");
+    expect(afterP1Reraise.actor).toBe("P2");
+    expect(actionCounts(afterP1Reraise)).toEqual({ fold: 1, call: 1 });
+    expect(findAction(afterP1Reraise, "call").type).toBe("terminal-showdown");
   });
 
   it("responding to a bet with allin also caps further action to fold/call (stack exhausted)", () => {
@@ -100,9 +107,9 @@ describe("buildStreetTree — flop (4 bet sizes, 1 raise size)", () => {
     expect(fold).toEqual(expect.objectContaining({ type: "terminal-fold", winner: "P1" }));
   });
 
-  it("stays small and bounded: 28 decision nodes for 4 bet sizes + 1 raise size", () => {
+  it("stays small and bounded: 42 decision nodes for 4 bet sizes + 1 raise size", () => {
     const tree = buildStreetTree(7.5, 97, "flop");
-    expect(countDecisionNodes(tree)).toBe(28);
+    expect(countDecisionNodes(tree)).toBe(42);
   });
 
   it("collapses every bet size into allin-only when the stack is too short", () => {
@@ -119,7 +126,7 @@ describe("buildStreetTree — turn/river (3 bet sizes, 2 raise sizes)", () => {
     expect(actionCounts(tree)).toEqual({ check: 1, bet: 3, allin: 1 });
   });
 
-  it("facing a bet offers fold/call/2 raises/allin, then the raise caps to fold/call", () => {
+  it("facing a bet offers fold/call/2 raises/allin, then a re-raise, then the cap leaves fold/call", () => {
     const tree = buildStreetTree(10, 97, "river");
     const afterBet = findNthAction(tree, "bet", 0);
     if (afterBet.type !== "decision") throw new Error("expected decision");
@@ -127,12 +134,17 @@ describe("buildStreetTree — turn/river (3 bet sizes, 2 raise sizes)", () => {
 
     const afterRaise = findNthAction(afterBet, "raise", 0);
     if (afterRaise.type !== "decision") throw new Error("expected decision");
-    expect(actionCounts(afterRaise)).toEqual({ fold: 1, call: 1 });
+    expect(actionCounts(afterRaise).fold).toBe(1);
+    expect(actionCounts(afterRaise).raise).toBeGreaterThan(0);
+
+    const afterReraise = findNthAction(afterRaise, "raise", 0);
+    if (afterReraise.type !== "decision") throw new Error("expected decision");
+    expect(actionCounts(afterReraise)).toEqual({ fold: 1, call: 1 });
   });
 
-  it("stays bounded: 28 decision nodes for 3 bet sizes + 2 raise sizes", () => {
+  it("stays bounded: 60 decision nodes for 3 bet sizes + 2 raise sizes", () => {
     const tree = buildStreetTree(10, 97, "turn");
-    expect(countDecisionNodes(tree)).toBe(28);
+    expect(countDecisionNodes(tree)).toBe(60);
   });
 });
 

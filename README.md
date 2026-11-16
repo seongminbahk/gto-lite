@@ -38,7 +38,7 @@ It does not replace a full solver. It trades some accuracy for speed and ease, a
 What is simplified to get there:
 
 - Most preflop ranges are **estimates**: charts and rules tuned to solver frequencies at 20, 40 and 100bb. At 15bb or less they are an exact all-in-or-fold Nash solve.
-- Postflop is a real solve of a smaller game: heads-up only, a short menu of bet sizes, one raise per street.
+- Postflop is a real solve of a smaller game: heads-up only, a short menu of bet sizes, at most a raise and a re-raise per street.
 - Everyone at the table has the same stack.
 
 The [About page](https://gto-lite-beryl.vercel.app/about) has the full account.

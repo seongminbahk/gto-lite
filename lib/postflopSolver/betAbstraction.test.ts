@@ -70,15 +70,27 @@ describe("computePostflopAvailableActions — facing a bet, no raise yet (raiseC
   });
 });
 
-describe("computePostflopAvailableActions — facing a raise (raiseCount at cap)", () => {
-  it("offers only fold/call, never a further raise or allin", () => {
+describe("computePostflopAvailableActions — facing a raise and a re-raise (raiseCount at cap)", () => {
+  it("offers a re-raise facing one raise", () => {
     let state = initialPostflopPotState(7.5);
     state = applyPostflopAction(state, "P1", "bet", { effectiveStackBb: 97, betToBb: 5 });
     state = applyPostflopAction(state, "P2", "raise", { effectiveStackBb: 97, betToBb: 22.5 });
     const actions = computePostflopAvailableActions(state, "P1", 97, "flop");
-    expect(actions.fold).toBe(true);
     // P1 already had 5 committed from their own bet; they owe 22.5-5=17.5 to call the raise.
     expect(actions.call).toEqual({ amountBb: 17.5 });
+    // pot 7.5+5+22.5 = 35, after calling 52.5: re-raise to 22.5 + 52.5 = 75.
+    expect(actions.raise).toEqual([{ toBb: 75 }]);
+    expect(actions.allin).toEqual({ toBb: 97 });
+  });
+
+  it("offers only fold/call, never a further raise or allin", () => {
+    let state = initialPostflopPotState(7.5);
+    state = applyPostflopAction(state, "P1", "bet", { effectiveStackBb: 197, betToBb: 5 });
+    state = applyPostflopAction(state, "P2", "raise", { effectiveStackBb: 197, betToBb: 22.5 });
+    state = applyPostflopAction(state, "P1", "raise", { effectiveStackBb: 197, betToBb: 75 });
+    const actions = computePostflopAvailableActions(state, "P2", 197, "flop");
+    expect(actions.fold).toBe(true);
+    expect(actions.call).toEqual({ amountBb: 52.5 });
     expect(actions.bet).toEqual([]);
     expect(actions.raise).toEqual([]);
     expect(actions.allin).toBeNull();

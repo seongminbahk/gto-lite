@@ -72,7 +72,7 @@ const en: AboutContent = {
       items: [
         "Postflop is heads-up only. Pots with three or more players stop at the flop.",
         "Bet sizes come from a short menu. On the flop a quick first pass picks the two that fit the spot for each player, out of {flopSizes} of the pot; a player who rarely bets there gets one. Later streets use {laterSizes}. All-in is always among the raises, and among the bets only when the stack is at most {allinPots} pots, or {riverAllinPots} on the river.",
-        "Only one raise per street. A raise can be called or folded to, not re-raised.",
+        "At most a raise and a re-raise per street. A re-raise can be called or folded to, not raised again.",
         "Short stacks shove or fold. There is no limp or min-raise at 15 big blinds or less, so those ranges shove wider than a solver that mixes them.",
         "Everyone at the table has the same stack.",
         "Cash-game charts and the effect of rake on preflop ranges are estimates.",
@@ -156,7 +156,7 @@ const ko: AboutContent = {
       items: [
         "포스트플랍은 2명일 때만 풉니다. 3명 이상이 남은 팟은 플랍에서 멈춥니다.",
         "벳 사이즈는 짧은 메뉴에서 나옵니다. 플랍은 먼저 빠르게 한 번 풀어서 팟의 {flopSizes} 가운데 그 스팟에 맞는 두 가지를 플레이어마다 고릅니다. 거기서 거의 벳하지 않는 쪽은 하나만 받습니다. 이후 스트리트는 {laterSizes}를 씁니다. 올인은 레이즈에는 항상 있고, 벳에는 스택이 팟의 {allinPots}배(리버는 {riverAllinPots}배) 이하일 때만 있습니다.",
-        "스트리트마다 레이즈는 한 번입니다. 레이즈에는 콜이나 폴드만 할 수 있고 다시 레이즈할 수 없습니다.",
+        "스트리트마다 레이즈는 재레이즈까지 두 번입니다. 재레이즈에는 콜이나 폴드만 할 수 있습니다.",
         "짧은 스택은 올인 아니면 폴드입니다. 15bb 이하에는 림프와 민레이즈가 없어서, 이를 섞는 솔버보다 올인 범위가 넓습니다.",
         "테이블의 모든 플레이어가 같은 스택을 갖습니다.",
         "캐시 게임 차트와, 레이크가 프리플랍 레인지에 주는 영향은 추정치입니다.",

@@ -65,8 +65,16 @@ export function streetMenu(street: PostflopStreet, allinOpen: boolean): (state: 
   return (state, actor) => (state.currentBetToCall > state.committed[actor] ? BET_SIZING[street] : opening);
 }
 
-/** How many times a bet may be raised, this street. Beyond this, only fold/call remain. */
-export const RAISE_CAP = 1;
+/**
+ * How many times a bet may be raised, this street: a raise and a re-raise.
+ * Beyond this, only fold/call remain. With one raise only, a bettor raised
+ * on UTG-vs-BTN 8d5c4c had to call with its sets and overpairs too, and led
+ * the 4d turn 88% where a commercial solver checks 99.9%; with the re-raise
+ * it checks 62% (100% on that solver's turn menu). Measured at 4 threads on
+ * three 100bb spots and three flops: flop solves within noise of one raise,
+ * turn solves about 1.7–2× as long (up to 4.6s).
+ */
+export const RAISE_CAP = 2;
 
 export function streetForBoardLength(boardLength: number): PostflopStreet {
   if (boardLength === 3) return "flop";
