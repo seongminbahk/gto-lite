@@ -2,7 +2,7 @@
 
 # gtoLite
 
-Poker ranges and a postflop solver in your browser. Free, no sign-up.
+Poker ranges and a postflop solver in your browser. Free and open source, no sign-up.
 
 **Try it: [gto-lite-beryl.vercel.app](https://gto-lite-beryl.vercel.app)**
 
@@ -58,6 +58,6 @@ The postflop solver is C++ (`native/solver/`) and its compiled WebAssembly is co
 
 ## License
 
-There is no license: the source is public to read, and no permission to copy or reuse it is granted.
+[AGPL-3.0](LICENSE). You may use, modify and redistribute the code; if you distribute a modified version or run one as a network service, you must publish its source under the same license.
 
 gtoLite is an independent study project, not affiliated with any poker site or solver company.
