@@ -13,6 +13,7 @@ const redisConfigured =
 export const { GET, POST } = createExplainHandlers({
   store: redisConfigured ? Redis.fromEnv() : null,
   secret: process.env.EXPLAIN_SECRET,
+  modelConfigured: Boolean(process.env.ANTHROPIC_API_KEY),
   model: EXPLAIN_MODEL,
   now: () => new Date(),
   isBot: async () => (await checkBotId()).isBot,

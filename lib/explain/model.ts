@@ -13,7 +13,7 @@ const MAX_OUTPUT_TOKENS = 3000;
 const TIMEOUT_MS = 60_000;
 
 export function streamExplanation(summary: HandSummary, language: ExplainLanguage, options: { model?: string; abortSignal?: AbortSignal } = {}) {
-  // Made per call: the client reads the key when it's built, and a server without one should fail the request, not the import.
+  // The client reads ANTHROPIC_API_KEY from the environment. A server without one never gets here: the explain route reports the feature as off.
   return new Anthropic().messages.stream(
     {
       model: options.model ?? EXPLAIN_MODEL,

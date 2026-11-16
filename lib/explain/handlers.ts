@@ -25,9 +25,10 @@ export const MAX_REQUEST_BYTES = 20_000;
 export type ExplanationPart = { type: "text"; text: string } | { type: "error"; error: unknown } | { type: "finish"; complete: boolean };
 
 export interface ExplainDeps {
-  /** Null when Redis or the signing secret isn't configured: the feature is off. */
+  /** The feature is off when Redis, the signing secret or the model's API key isn't configured. */
   store: ExplainStore | null;
   secret: string | undefined;
+  modelConfigured: boolean;
   model: string;
   now: () => Date;
   isBot: () => Promise<boolean>;
@@ -67,7 +68,7 @@ function withCookie(headers: Record<string, string>, setCookie: string | undefin
 
 export function createExplainHandlers(deps: ExplainDeps) {
   const configured = (): { store: ExplainStore; secret: string } | null =>
-    deps.store && deps.secret ? { store: deps.store, secret: deps.secret } : null;
+    deps.store && deps.secret && deps.modelConfigured ? { store: deps.store, secret: deps.secret } : null;
 
   async function GET(request: Request): Promise<Response> {
     const config = configured();

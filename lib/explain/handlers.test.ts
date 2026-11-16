@@ -22,6 +22,7 @@ function setup(script: ExplanationPart[] | (() => AsyncIterable<ExplanationPart>
   const deps: ExplainDeps = {
     store,
     secret: SECRET,
+    modelConfigured: true,
     model: "test/model",
     now: () => new Date("2026-11-10T03:00:00Z"),
     isBot: async () => false,
@@ -128,6 +129,15 @@ describe("POST /api/explain", () => {
     expect(await (await createExplainHandlers({ ...bot.deps, secret: undefined }).GET(new Request("http://localhost/api/explain"))).json()).toEqual({
       available: false,
     });
+  });
+
+  it("is off without the model's API key, and takes none of today's explanations", async () => {
+    const { deps, explain, store } = setup();
+    const handlers = createExplainHandlers({ ...deps, modelConfigured: false });
+    expect(await (await handlers.GET(new Request("http://localhost/api/explain"))).json()).toEqual({ available: false });
+    expect((await handlers.POST(post(BODY))).status).toBe(503);
+    expect(explain).not.toHaveBeenCalled();
+    expect(store.values.size).toBe(0);
   });
 });
 
