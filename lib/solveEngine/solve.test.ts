@@ -203,6 +203,25 @@ describe("solveActiveSeat", () => {
       });
     });
 
+    it("jams its best hands over a 30bb 4-bet that leaves chips behind, and calls with others", () => {
+      const line = replayActionPath(
+        ["UTG:fold", "UTG1:fold", "LJ:fold", "HJ:fold", "CO:raise", "BTN:fold", "SB:fold", "BB:raise", "CO:raise"].map((s) => {
+          const [actor, action] = s.split(":");
+          return { actor: actor as Position, action: action as ActionType };
+        }),
+        30,
+        TOURNAMENT_8,
+      );
+      if (line.status !== "active") throw new Error("expected BB to act");
+      expect(line.potState.currentBetToCall).toBeLessThan(30);
+      const hands = solveActiveSeat(matrix, "BB", line.potState, 30).hands;
+      expect(hands.find((h) => h.hand === "AA")!.allin).toBe(1);
+      const jammed = combosWith(hands, (h) => h.allin ?? 0);
+      const called = combosWith(hands, (h) => h.call);
+      expect(jammed).toBeGreaterThan(called);
+      expect(called).toBeGreaterThan(0);
+    });
+
     it("keeps a seat that shoved at a call-only node in range", () => {
       const line = replayActionPath(
         ["UTG:raise", "UTG1:fold", "LJ:fold", "HJ:fold", "CO:fold", "BTN:raise", "SB:fold", "BB:fold", "UTG:raise", "BTN:allin"].map((s) => {

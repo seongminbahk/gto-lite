@@ -19,7 +19,7 @@ import { aggressiveFrequencies } from "./postflopHandoff";
 import { callersOf, type PotState, type SeatDecision } from "./potState";
 import { NO_RAKE_SETTINGS, rakeShare, type RakeSettings } from "./rake";
 import { shouldUseNash } from "./classify";
-import { BIG_BLIND_BB, SMALL_BLIND_BB } from "./constants";
+import { BIG_BLIND_BB, SHORT_RERAISE_JAM_SHARE, SMALL_BLIND_BB } from "./constants";
 import { CHIP_EV, equalStackBubbleFactor, type IcmStructure } from "./icm";
 import { getPlayabilityRanking, getPushFoldResult, getRangePlayabilityRanking } from "./solveCache";
 
@@ -212,6 +212,8 @@ function solveShoveSpot(ctx: SpotContext): SolvedNode {
         rake: rake.structure,
         bubbleFactor: ctx.allInBubbleFactor,
         jamDefense: limpRaiseJamDefense(ctx),
+        // A raise that leaves chips behind can be re-raised all-in, which the strongest hands do.
+        jamShareOfContinues: potState.currentBetToCall < ctx.effectiveStackBb ? SHORT_RERAISE_JAM_SHARE : 0,
       }),
     };
   }

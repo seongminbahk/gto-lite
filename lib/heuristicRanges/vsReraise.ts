@@ -83,11 +83,17 @@ export interface JamDefense {
 
 export type VsShoveParams = Pick<VsReraiseParams, "heroRange" | "villainRange" | "potBb" | "amountOwedBb" | "rake" | "bubbleFactor"> & {
   jamDefense?: JamDefense;
+  /**
+   * The raise isn't all-in: this share of the continuing combos, those with the
+   * most equity against the raiser, re-raise all-in instead of calling.
+   */
+  jamShareOfContinues?: number;
 };
 
 /**
  * Facing a raise that all but gets the stacks in, equity is what a hand wins:
- * it calls if that beats the real price of the real pot. Nothing here re-raises.
+ * it continues if that beats the real price of the real pot. It only calls,
+ * unless `jamShareOfContinues` has its best continues move all-in.
  * With `jamDefense`, it also calls with its best hands against the folding
  * range until jamming all of that range no longer beats folding it.
  */
@@ -99,10 +105,35 @@ export function generateCallShoveScenario(matrix: EquityMatrix, params: VsShoveP
     ALL_HANDS.map((h) => [h.hand, (heroRange.get(h.hand) ?? 0) > 0 && weightedEquityVsRange(matrix, h.hand, villainRange) > equityToCall ? 1 : 0]),
   );
   if (params.jamDefense) defendAgainstJams(matrix, params, params.jamDefense, calls);
+  const jams = jamsAmongContinues(matrix, heroRange, villainRange, calls, params.jamShareOfContinues ?? 0);
   return ALL_HANDS.map((h) => {
-    const call = calls.get(h.hand)!;
-    return { hand: h.hand, fold: 1 - call, call, raise: 0 };
+    const continues = calls.get(h.hand)!;
+    const allin = jams.get(h.hand) ?? 0;
+    return { hand: h.hand, fold: 1 - continues, call: continues - allin, raise: 0, ...(allin > 0 && { allin }) };
   });
+}
+
+/** The continuing hands with the most equity against the raiser, up to `share` of the continuing combos, and how much of each goes all-in. */
+function jamsAmongContinues(
+  matrix: EquityMatrix,
+  heroRange: FrequencyMap,
+  villainRange: FrequencyMap,
+  calls: Map<string, number>,
+  share: number,
+): Map<string, number> {
+  const jams = new Map<string, number>();
+  if (share <= 0) return jams;
+  const continuing = ALL_HANDS.filter((h) => calls.get(h.hand) === 1 && (heroRange.get(h.hand) ?? 0) > 0)
+    .map((h) => ({ hand: h.hand, combos: heroRange.get(h.hand)! * h.combos, equity: weightedEquityVsRange(matrix, h.hand, villainRange) }))
+    .sort((a, b) => b.equity - a.equity);
+  let left = share * continuing.reduce((sum, h) => sum + h.combos, 0);
+  for (const h of continuing) {
+    if (left <= 0) break;
+    const part = Math.min(1, left / h.combos);
+    jams.set(h.hand, part);
+    left -= part * h.combos;
+  }
+  return jams;
 }
 
 /** Adds calls, best against the folding range first, until jamming that whole range is worth no more than folding it. */

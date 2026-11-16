@@ -136,6 +136,17 @@ describe("generateCallShoveScenario", () => {
     expect(calling({ potBb: 90, rake: { rate: 0.1, capBb: 30 } })).toBeLessThan(calling({ potBb: 90 }));
   });
 
+  it("against a raise that isn't all-in, moves its best continues all-in and calls with the rest", () => {
+    const plain = generateCallShoveScenario(matrix, shove);
+    const hands = generateCallShoveScenario(matrix, { ...shove, jamShareOfContinues: 0.7 });
+    const combos = (pick: (h: HandFrequency) => number) => hands.reduce((sum, h) => sum + pick(h) * HAND_BY_LABEL.get(h.hand)!.combos, 0);
+    // The same hands continue; 70% of them by combos jam, the strongest first.
+    expect(continuing(hands)).toBeCloseTo(continuing(plain), 9);
+    expect(combos((h) => h.allin ?? 0) / combos((h) => 1 - h.fold)).toBeCloseTo(0.7, 6);
+    expect(hands.find((h) => h.hand === "AA")).toMatchObject({ allin: 1, call: 0 });
+    expect(hands.every((h) => h.raise === 0)).toBe(true);
+  });
+
   it("with a jam defense, calls more of its range until the folding hands can't jam at a profit", () => {
     // A tight value range against a tight jam, where the hands that would have folded get to jam instead.
     const tight = { heroRange: range("AA KK QQ JJ TT AKs AKo AQs"), villainRange: range("AA KK"), potBb: 120, amountOwedBb: 84, rake: NO_RAKE };

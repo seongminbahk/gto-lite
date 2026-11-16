@@ -34,9 +34,9 @@ describe("computeRawRaiseTo — tournament re-raises by depth", () => {
   const opened = (stack: number) => applyAction(btnOpen(stack), "BTN", "raise", { effectiveStackBb: stack, raiseToBb: computeRawRaiseTo("BTN", btnOpen(stack), stack) });
 
   it("3-bets from the blinds bigger the deeper it is", () => {
-    expect(computeRawRaiseTo("SB", opened(100), 100)).toBe(11.3); // 2.5 * 4.5
+    expect(computeRawRaiseTo("SB", opened(100), 100)).toBe(12.5); // 2.5 * 5
     expect(computeRawRaiseTo("BB", opened(100), 100)).toBe(13.1); // 2.5 * 5.25
-    expect(computeRawRaiseTo("SB", opened(40), 40)).toBe(7); // 2 * 3.5
+    expect(computeRawRaiseTo("SB", opened(40), 40)).toBe(7.5); // 2 * 3.75
     expect(computeRawRaiseTo("BB", opened(20), 20)).toBe(6); // 2 * 3
   });
 
@@ -44,12 +44,17 @@ describe("computeRawRaiseTo — tournament re-raises by depth", () => {
     const threeBet = applyAction(applyAction(opened(100), "SB", "fold", { effectiveStackBb: 100 }), "BB", "raise", { effectiveStackBb: 100, raiseToBb: 13.1 });
     expect(computeRawRaiseTo("BTN", threeBet, 100)).toBe(28.8);
   });
+
+  it("4-bets about 2x at 30bb, short of a jam", () => {
+    const threeBet = applyAction(applyAction(opened(30), "SB", "fold", { effectiveStackBb: 30 }), "BB", "raise", { effectiveStackBb: 30, raiseToBb: 7.5 });
+    expect(computeRawRaiseTo("BTN", threeBet, 30)).toBe(15); // 7.5 * 2
+  });
 });
 
 describe("computeRawRaiseTo — reactive raises", () => {
-  it("raises 3x (IP) when the raiser acts after the last aggressor postflop", () => {
+  it("raises 3.8x (IP) when the raiser acts after the last aggressor postflop", () => {
     const state = applyAction(initialPotState(), "UTG", "raise", { effectiveStackBb: 100, raiseToBb: 4 });
-    expect(computeRawRaiseTo("CO", state, 100)).toBe(12); // 4 * 3
+    expect(computeRawRaiseTo("CO", state, 100)).toBe(15.2); // 4 * 3.8
   });
 
   it("3-bets with the out-of-position size when the raiser acts before the last aggressor postflop", () => {
@@ -60,7 +65,7 @@ describe("computeRawRaiseTo — reactive raises", () => {
 
   it("treats the blinds as OOP even though they act last preflop", () => {
     const state = applyAction(initialPotState(), "BTN", "raise", { effectiveStackBb: 100, raiseToBb: 2.5 });
-    expect(computeRawRaiseTo("SB", state, 100)).toBe(11.3); // 2.5 * 4.5
+    expect(computeRawRaiseTo("SB", state, 100)).toBe(12.5); // 2.5 * 5
     expect(computeRawRaiseTo("BB", state, 100)).toBe(13.1); // 2.5 * 5.25
   });
 
@@ -72,14 +77,14 @@ describe("computeRawRaiseTo — reactive raises", () => {
 
   it("puts SB out of position against BB", () => {
     const state = applyAction(initialPotState(), "BB", "raise", { effectiveStackBb: 100, raiseToBb: 3 });
-    expect(computeRawRaiseTo("SB", state, 100)).toBe(13.5); // 3 * 4.5
+    expect(computeRawRaiseTo("SB", state, 100)).toBe(15); // 3 * 5
   });
 
   it("always compares against the CURRENT lastAggressor, not a stale one, when a seat reopens", () => {
     let state = applyAction(initialPotState(), "UTG", "raise", { effectiveStackBb: 100, raiseToBb: 4 });
     state = applyAction(state, "LJ", "raise", { effectiveStackBb: 100, raiseToBb: 12 });
     // UTG reopens, facing LJ's 3-bet now, not its own earlier open.
-    expect(computeRawRaiseTo("UTG", state, 100)).toBe(48); // 12 * 4 (UTG index 0 < LJ index 2 -> OOP)
+    expect(computeRawRaiseTo("UTG", state, 100)).toBe(30); // 12 * 2.5 (UTG index 0 < LJ index 2 -> OOP)
   });
 });
 
@@ -116,15 +121,15 @@ describe("computeAvailableActions", () => {
   });
 
   it("collapses Raise into Allin when the computed size reaches the effective stack", () => {
-    const state = applyAction(initialPotState(), "UTG", "raise", { effectiveStackBb: 20, raiseToBb: 4 });
-    // UTG1 reacting: 4 * 3 = 12, well under a 20bb stack — raise should show.
+    const state = applyAction(initialPotState(), "UTG", "raise", { effectiveStackBb: 20, raiseToBb: 8 });
+    // UTG1 reacting: 8 * 2.25 = 18, under a 20bb stack — raise should show.
     const wide = computeAvailableActions("UTG1", state, 20);
-    expect(wide.raise).toEqual({ toBb: 12 });
+    expect(wide.raise).toEqual({ toBb: 18 });
 
-    // Now with a 10bb stack, 12 gets capped to 10 (=stack) — raise should collapse to allin-only.
-    const short = computeAvailableActions("UTG1", state, 10);
+    // Now with a 17bb stack, 18 gets capped to 17 (=stack) — raise should collapse to allin-only.
+    const short = computeAvailableActions("UTG1", state, 17);
     expect(short.raise).toBeNull();
-    expect(short.allin).toEqual({ toBb: 10 });
+    expect(short.allin).toEqual({ toBb: 17 });
   });
 
   it("offers no Allin facing an all-in, where Call already puts the whole stack in", () => {

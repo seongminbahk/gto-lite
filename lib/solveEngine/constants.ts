@@ -11,6 +11,12 @@ export const STACK_MAX_BB = 100;
 export const NASH_FLAT_STACK_THRESHOLD_BB = 15;
 /** Route to Nash when facing a raise and remaining-stack/pot is at or under this ratio. */
 export const NASH_SPR_THRESHOLD = 1;
+/**
+ * Facing such a raise when it isn't all-in, the share of the continuing hands
+ * that move all-in rather than call. A commercial solver's 30bb tournament
+ * spots (read 2026-11-17) jam 53–95% of what continues against a 4-bet, about 70% typically.
+ */
+export const SHORT_RERAISE_JAM_SHARE = 0.7;
 
 /**
  * Opening raise-to size (bb) scales linearly with effective stack depth:

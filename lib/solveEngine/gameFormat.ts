@@ -336,27 +336,32 @@ export interface GameFormat {
  * per-hand ranges do (read 2026-11-16); the public ranges fold far more.
  */
 const TOURNAMENT_TUNING_BY_STACK: DepthTuning[] = [
-  { stackBb: 20, sbThreeBetWidthRatio: 0.62, threeBetWidthRatio: 0.48, coldCallOopMultiplier: 0.55, closingContinueFactor: 1.16, threeBetValueShare: 0.85, sbFlatFactor: 0.1, sbRaiseSpread: 0.5, sbOpenerKeepFactor: 2, bbVsSbContinueFactor: 1, closingWidthExponent: 0.1, coldCallIpFactor: 0.6, nonBlindThreeBetFactor: 0.8, coldCallWidthExponent: 0.5, coldCallThreeBetMix: 0.25, coldCallPerSeatBehind: 0.9, coldCallRangeEquityWeight: 0.5, reraiseKeepBase: 0.39, facingFourBetKeepBase: 0.8, reraiseRangeEquityWeight: 0.5, reraiseValueMixSpread: 0.2, reraiseBlockerBluffMaxShare: 0.5, fourBetWidthRatio: 0.65, fourBetVsInPositionWidthRatio: 0.8, fourBetVsInPositionBluffShare: 0.4, fiveBetWidthRatio: 1.2 },
+  { stackBb: 20, sbThreeBetWidthRatio: 0.62, threeBetWidthRatio: 0.48, coldCallOopMultiplier: 0.55, closingContinueFactor: 1.16, threeBetValueShare: 0.85, sbFlatFactor: 0.1, sbRaiseSpread: 0.5, sbOpenerKeepFactor: 1.3, bbVsSbContinueFactor: 1, closingWidthExponent: 0.1, coldCallIpFactor: 0.6, nonBlindThreeBetFactor: 0.8, coldCallWidthExponent: 0.5, coldCallThreeBetMix: 0.25, coldCallPerSeatBehind: 0.9, coldCallRangeEquityWeight: 0.5, reraiseKeepBase: 0.39, facingFourBetKeepBase: 0.8, reraiseRangeEquityWeight: 0.5, reraiseValueMixSpread: 0.2, reraiseBlockerBluffMaxShare: 0.5, fourBetWidthRatio: 0.65, fourBetVsInPositionWidthRatio: 0.8, fourBetVsInPositionBluffShare: 0.4, fiveBetWidthRatio: 1.2 },
+  { stackBb: 30, sbThreeBetWidthRatio: 0.4825, threeBetWidthRatio: 0.4025, coldCallOopMultiplier: 0.525, closingContinueFactor: 1.1, threeBetValueShare: 0.725, sbFlatFactor: 0.55, sbRaiseSpread: 0.55, sbOpenerKeepFactor: 1.35, bbVsSbContinueFactor: 1.095, closingWidthExponent: 0.275, coldCallIpFactor: 0.65, nonBlindThreeBetFactor: 0.775, coldCallWidthExponent: 0.5, coldCallThreeBetMix: 0.625, coldCallPerSeatBehind: 0.9, coldCallRangeEquityWeight: 0.5, reraiseKeepBase: 0.48, facingFourBetKeepBase: 0.8, reraiseRangeEquityWeight: 0.375, reraiseValueMixSpread: 0.1, reraiseBlockerBluffMaxShare: 0.25, fourBetWidthRatio: 0.6, fourBetVsInPositionWidthRatio: 0.8, fourBetVsInPositionBluffShare: 0.4, fiveBetWidthRatio: 1.35 },
   { stackBb: 40, sbThreeBetWidthRatio: 0.345, threeBetWidthRatio: 0.325, coldCallOopMultiplier: 0.5, closingContinueFactor: 1.04, threeBetValueShare: RAISE_VALUE_SHARE, sbFlatFactor: 1, sbRaiseSpread: 0.6, sbOpenerKeepFactor: 1.4, bbVsSbContinueFactor: 1.19, closingWidthExponent: 0.45, coldCallIpFactor: 0.7, nonBlindThreeBetFactor: 0.75, coldCallWidthExponent: 0.5, coldCallThreeBetMix: 1, coldCallPerSeatBehind: 0.9, coldCallRangeEquityWeight: 0.5, reraiseKeepBase: 0.4, facingFourBetKeepBase: 0.8, reraiseRangeEquityWeight: 0.25, reraiseValueMixSpread: 0, reraiseBlockerBluffMaxShare: 0, fourBetWidthRatio: 0.55, fourBetVsInPositionWidthRatio: 0.8, fourBetVsInPositionBluffShare: 0.4, fiveBetWidthRatio: 1.5 },
-  { stackBb: 100, sbThreeBetWidthRatio: THREE_BET_WIDTH_RATIO, threeBetWidthRatio: THREE_BET_WIDTH_RATIO, coldCallOopMultiplier: COLD_CALL_OOP_MULTIPLIER, closingContinueFactor: 1, threeBetValueShare: RAISE_VALUE_SHARE, sbFlatFactor: 1, sbRaiseSpread: 0.75, sbOpenerKeepFactor: 1.2, bbVsSbContinueFactor: 1, closingWidthExponent: 0.25, coldCallIpFactor: 0.8, nonBlindThreeBetFactor: 1.15, coldCallWidthExponent: 0.3, coldCallThreeBetMix: 1, coldCallPerSeatBehind: 0.8, coldCallRangeEquityWeight: 0.75, reraiseKeepBase: 0.41, facingFourBetKeepBase: 0.65, reraiseRangeEquityWeight: 0.5, reraiseValueMixSpread: 0.2, reraiseBlockerBluffMaxShare: 0.5, fourBetWidthRatio: 0.38, fourBetVsInPositionWidthRatio: 0.58, fourBetVsInPositionBluffShare: 0.4, fiveBetWidthRatio: 0.5 },
+  { stackBb: 60, sbThreeBetWidthRatio: 0.33, threeBetWidthRatio: 0.3167, coldCallOopMultiplier: 0.5333, closingContinueFactor: 1.0267, threeBetValueShare: 0.6, sbFlatFactor: 1, sbRaiseSpread: 0.65, sbOpenerKeepFactor: 1.3333, bbVsSbContinueFactor: 1.1267, closingWidthExponent: 0.3833, coldCallIpFactor: 0.7333, nonBlindThreeBetFactor: 0.8833, coldCallWidthExponent: 0.4333, coldCallThreeBetMix: 1, coldCallPerSeatBehind: 0.8667, coldCallRangeEquityWeight: 0.5833, reraiseKeepBase: 0.45, facingFourBetKeepBase: 0.75, reraiseRangeEquityWeight: 0.3333, reraiseValueMixSpread: 0.0667, reraiseBlockerBluffMaxShare: 0.1667, fourBetWidthRatio: 0.35, fourBetVsInPositionWidthRatio: 0.7267, fourBetVsInPositionBluffShare: 0.4, fiveBetWidthRatio: 1.1667 },
+  { stackBb: 100, sbThreeBetWidthRatio: THREE_BET_WIDTH_RATIO, threeBetWidthRatio: THREE_BET_WIDTH_RATIO, coldCallOopMultiplier: COLD_CALL_OOP_MULTIPLIER, closingContinueFactor: 1, threeBetValueShare: RAISE_VALUE_SHARE, sbFlatFactor: 1, sbRaiseSpread: 0.75, sbOpenerKeepFactor: 1.3, bbVsSbContinueFactor: 1, closingWidthExponent: 0.25, coldCallIpFactor: 0.8, nonBlindThreeBetFactor: 1.15, coldCallWidthExponent: 0.3, coldCallThreeBetMix: 1, coldCallPerSeatBehind: 0.8, coldCallRangeEquityWeight: 0.75, reraiseKeepBase: 0.41, facingFourBetKeepBase: 0.65, reraiseRangeEquityWeight: 0.5, reraiseValueMixSpread: 0.2, reraiseBlockerBluffMaxShare: 0.5, fourBetWidthRatio: 0.38, fourBetVsInPositionWidthRatio: 0.58, fourBetVsInPositionBluffShare: 0.4, fiveBetWidthRatio: 0.5 },
 ];
 /** In tournaments a 3-bet of a quarter of the stack, or a 4-bet of 40% of it, goes all-in, as the reference solver's 20bb and 40bb solutions do. */
 const TOURNAMENT_JAM_THREE_BET_SHARE = 0.25;
 const TOURNAMENT_JAM_FOUR_BET_SHARE = 0.4;
 
 /**
- * Tournament blinds 3-bet a button open bigger the deeper it gets, as the reference
- * solver's MTT 8max ChipEV solutions do: the SB to 2.5x at 20bb, 3.5x at 40bb
- * and 4.5x at 100bb, the BB to 3x, 4.25x and 5.25x; the button 4-bets 2.2x at
- * 100bb. In-position 3-bets and out-of-position 4-bets weren't seen there and
- * keep the old 3x and 4x. Blind against blind at 40bb, the BB 3-bets the SB's
- * 3bb raise to 7.5 (2.5x) and the SB 4-bets that to 15.75 (2.1x), short of a
- * jam; at 20 and 100bb they weren't seen and keep 3x and 4x.
+ * Tournament re-raise sizes by depth, as the reference solver's MTT 8max ChipEV
+ * solutions have them (read at 20, 30, 40, 60 and 100bb, 2026-11-17). An
+ * in-position 3-bet is 2.25x the open at 20bb, about 2.65x at 30bb, 3x at 40bb,
+ * 3.4x at 60bb and 3.8x at 100bb (a little bigger from CO and BTN than from
+ * early seats); the SB 3-bets 2.5x–5x and the BB 3x–5.25x. A 4-bet or more is
+ * about 2x at 30–60bb and 2.2x (in position) to 2.5x at 100bb; at 20bb that
+ * solver only jams, and these 3x/4x sizes reach the jam threshold. Blind
+ * against blind, the BB 3-bets the SB's raise 2.25x–3.25x and the SB 4-bets 2–2.5x.
  */
 const TOURNAMENT_RERAISE_SIZES_BY_STACK: NonNullable<ReraiseSizes["byStack"]> = [
-  { stackBb: 20, threeBet: { ip: 3, sbOop: 2.5, bbOop: 3 }, fourBetPlus: { ip: 3, oop: 4 }, bbOverSb: 3, sbOverBb: 4 },
-  { stackBb: 40, threeBet: { ip: 3, sbOop: 3.5, bbOop: 4.25 }, fourBetPlus: { ip: 2.2, oop: 4 }, bbOverSb: 2.5, sbOverBb: 2.1 },
-  { stackBb: 100, threeBet: { ip: 3, sbOop: 4.5, bbOop: 5.25 }, fourBetPlus: { ip: 2.2, oop: 4 }, bbOverSb: 3, sbOverBb: 4 },
+  { stackBb: 20, threeBet: { ip: 2.25, sbOop: 2.5, bbOop: 3 }, fourBetPlus: { ip: 3, oop: 4 }, bbOverSb: 2.25, sbOverBb: 4 },
+  { stackBb: 30, threeBet: { ip: 2.65, sbOop: 3.25, bbOop: 3.75 }, fourBetPlus: { ip: 2, oop: 2 }, bbOverSb: 2.5, sbOverBb: 2 },
+  { stackBb: 40, threeBet: { ip: 3, sbOop: 3.75, bbOop: 4.25 }, fourBetPlus: { ip: 2, oop: 2.1 }, bbOverSb: 2.5, sbOverBb: 2.1 },
+  { stackBb: 60, threeBet: { ip: 3.4, sbOop: 4, bbOop: 4.75 }, fourBetPlus: { ip: 2, oop: 2.1 }, bbOverSb: 3, sbOverBb: 2.1 },
+  { stackBb: 100, threeBet: { ip: 3.8, sbOop: 5, bbOop: 5.25 }, fourBetPlus: { ip: 2.2, oop: 2.5 }, bbOverSb: 3.25, sbOverBb: 2.5 },
 ];
 
 export const TOURNAMENT_8: GameFormat = {
