@@ -3,7 +3,7 @@ import type { PostflopSolvePhase } from "@/types/postflopSolver";
 import type { BoardCards, ComboRange } from "./types";
 import { expandToCombos, filterBlockedCombos } from "./combos";
 import { buildEquityTable, type EquityTable } from "./terminalEquity";
-import { LOOKAHEAD_BET_SIZING, offersOpeningAllin, streetForBoardLength, streetMenu, type PostflopStreet } from "./betAbstraction";
+import { LOOKAHEAD_BET_SIZING, offersOpeningAllin, TURN_RIVER_LOOKAHEAD, streetForBoardLength, streetMenu, type PostflopStreet } from "./betAbstraction";
 import { EVERY_CANDIDATE, flopMenu, pickFlopSizes } from "./flopSizing";
 import { clusteredNextCards, stratifiedNextCards } from "./nextCardSampling";
 import { buildHandTree, buildStreetTree, type HandTreeOptions, type PostflopTreeNode } from "./treeBuilder";
@@ -71,14 +71,16 @@ export const FLOP_FAST_LOOKAHEAD = { turnCards: 10, riverCards: 0 };
 
 /**
  * How a street's solve looks past its own end, or null when it doesn't (the
- * river). Later streets get the reduced LOOKAHEAD_BET_SIZING menu, and under a
+ * river). Later streets get the reduced LOOKAHEAD_BET_SIZING menu (a turn
+ * solve's river TURN_RIVER_LOOKAHEAD's three sizes), and under a
  * flop a sample of their cards; each is re-solved with its full menu once its
  * card is picked. `turnFeatures` lets a full flop lookahead cluster its turns.
  */
 export function lookaheadOptions(street: PostflopStreet, fast = false, turnFeatures?: (card: string) => Float32Array): HandTreeOptions | null {
   if (street === "turn") {
     // Every river: on BTN-vs-BB turns it loses 0.1–0.3% of the pot against 12 sampled rivers' 1–2.5%, for about 1s.
-    return { laterStreetSizing: LOOKAHEAD_BET_SIZING };
+    // Its river gets three bet sizes (TURN_RIVER_LOOKAHEAD).
+    return { laterStreetSizing: { ...LOOKAHEAD_BET_SIZING, river: TURN_RIVER_LOOKAHEAD } };
   }
   if (street === "flop") {
     const { turnCards, riverCards } = fast ? FLOP_FAST_LOOKAHEAD : FLOP_LOOKAHEAD;

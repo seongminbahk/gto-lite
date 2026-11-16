@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { ALL_HANDS } from "@/lib/handRange/handList";
 import type { HandFrequency } from "@/types/rangeData";
 import { FLOP_BET_CANDIDATES } from "./flopSizing";
-import { solvePostflopStreet } from "./solvePostflop";
+import { lookaheadOptions, solvePostflopStreet } from "./solvePostflop";
+import { LOOKAHEAD_BET_SIZING, TURN_RIVER_LOOKAHEAD } from "./betAbstraction";
 import type { DecisionNode } from "./treeBuilder";
 import { computeCheckdownEquities } from "./checkdownEquity";
 import { loadNodeSolverModule } from "./wasm/loadNode";
@@ -254,4 +255,13 @@ describe("solvePostflopStreet — a flop's bet sizes", () => {
       shallow.session?.dispose();
     });
   }
+});
+
+describe("lookaheadOptions", () => {
+  it("gives a turn solve's river three bet sizes, and keeps the flop's lookahead at one per street", () => {
+    expect(lookaheadOptions("turn")!.laterStreetSizing!.river).toEqual(TURN_RIVER_LOOKAHEAD);
+    expect(TURN_RIVER_LOOKAHEAD.betPotFractions).toHaveLength(3);
+    expect(lookaheadOptions("flop")!.laterStreetSizing).toBe(LOOKAHEAD_BET_SIZING);
+    expect(lookaheadOptions("river")).toBeNull();
+  });
 });

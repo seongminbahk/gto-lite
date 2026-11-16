@@ -45,6 +45,18 @@ export const LOOKAHEAD_BET_SIZING: Record<PostflopStreet, StreetBetSizing> = {
 };
 
 /**
+ * The river a turn solve looks ahead into: three bet sizes rather than
+ * LOOKAHEAD_BET_SIZING's one, and still no raise. Against a turn solve whose
+ * every river plays the full river menu, on three BTN-vs-BB turns, both
+ * players together lost 0.78% of the pot with the single 75% bet, 0.58% with
+ * 33/75% and 0.37% with 33/75/125%; adding a 100% raise to 33/75% did no
+ * better (0.60%). On the app's 100bb ranges and four threads, a BTN-vs-BB
+ * turn takes 12–16s instead of 4.5s. The flop solve keeps the single size:
+ * it already looks into 24 turns × 12 rivers.
+ */
+export const TURN_RIVER_LOOKAHEAD: StreetBetSizing = { betPotFractions: [0.33, 0.75, 1.25], raisePotFractions: [], allin: "when-no-size-fits" };
+
+/**
  * An opening all-in is offered with a stack of at most this many pots at the
  * start of the street being solved. On the flop at 1.9 pots on JT5 two-tone a
  * 3-bettor shoves 64% of the time, and a menu without it lost 2.2% of the pot
