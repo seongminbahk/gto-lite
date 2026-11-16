@@ -213,7 +213,7 @@ function solveShoveSpot(ctx: SpotContext): SolvedNode {
 
 function solveFirstIn(ctx: SpotContext): SolvedNode {
   const { activeSeat, effectiveStackBb, format, firstInWidths } = ctx;
-  const ranking = getPlayabilityRanking(ctx.matrix);
+  const ranking = getPlayabilityRanking(ctx.matrix, ctx.format.playabilityByStack ? ctx.effectiveStackBb : undefined);
   if (activeSeat === "BB") return { source: "heuristic-approx", hands: generateBbVsLimpScenario(ranking) };
   if (activeSeat === "SB" && format.sbCanLimp) {
     return { source: "heuristic-approx", hands: generateSbFirstInScenario(ranking, effectiveStackBb, firstInWidths, format.sbRaiseSpread) };
@@ -225,7 +225,7 @@ function solveFirstIn(ctx: SpotContext): SolvedNode {
 }
 
 function solveFacingRaise(ctx: FacingRaiseContext): SolvedNode {
-  const ranking = getPlayabilityRanking(ctx.matrix);
+  const ranking = getPlayabilityRanking(ctx.matrix, ctx.format.playabilityByStack ? ctx.effectiveStackBb : undefined);
   const hands = handsFacingRaise(ctx)
     ? generateVsReraiseScenario(ctx.matrix, ranking, vsReraiseParams(ctx, ctx.heroRange, ctx.villainRange))
     : generateFacingRaiseScenario(ranking, facingRaiseParams(ctx));
@@ -343,14 +343,16 @@ function facingRaiseParams(ctx: FacingRaiseContext): FacingRaiseParams {
     amountOwedBb: ctx.amountOwedBb,
     aggressorOpenWidth: openWidthFor(Math.min(seatIndex(lastAggressor), 6), effectiveStackBb, firstInWidths),
     referenceOpenWidth: openWidthFor(seatIndex("BTN"), effectiveStackBb, firstInWidths),
-    openerWidthExponent: seatsBehind === 0 ? format.closingWidthExponent : undefined,
+    openerWidthExponent: seatsBehind === 0 ? format.closingWidthExponent : ctx.isBlind ? undefined : format.coldCallWidthExponent,
     coldCallIpFactor: format.coldCallIpFactor,
     seatsBehind,
+    coldCallPerSeatBehind: ctx.isBlind ? undefined : format.coldCallPerSeatBehind,
     threeBetWidthRatio: threeBetWidthRatioFor(ctx, blindVsBlind),
     coldCallBase: format.coldCallBase,
     coldCallOopMultiplier: format.coldCallOopMultiplier,
     closingContinueFactor: format.closingContinueFactor * (blindVsBlind?.continueFactor ?? 1),
     threeBetValueShare: format.threeBetValueShare,
+    threeBetMix: ctx.isBlind ? undefined : format.coldCallThreeBetMix,
     continueFactor: Math.exp(-RAKE_CONTINUE_FALLOFF * rakeShare(ctx.rake.structure)),
     callFactor: flatCallFactor(ctx),
     bubbleFactor: partialRiskBubbleFactor(ctx),

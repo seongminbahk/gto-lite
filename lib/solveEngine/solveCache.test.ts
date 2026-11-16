@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadEquityMatrix } from "@/lib/equity/loadEquityMatrix";
-import { computePlayabilityRanking } from "@/lib/equity/handStrength";
+import { computePlayabilityRanking, playabilityAt } from "@/lib/equity/handStrength";
 import { solvePushFold } from "@/lib/nashSolver/pushFoldSolver";
 import { rakeById } from "./rake";
 import { getPlayabilityRanking, getPushFoldResult } from "./solveCache";
@@ -12,6 +12,13 @@ describe("getPlayabilityRanking", () => {
     const first = getPlayabilityRanking(matrix);
     expect(getPlayabilityRanking(matrix)).toBe(first);
     expect(first).toEqual(computePlayabilityRanking(matrix));
+  });
+
+  it("keeps one ranking per depth", () => {
+    const deep = getPlayabilityRanking(matrix, 100);
+    expect(getPlayabilityRanking(matrix, 100)).toBe(deep);
+    expect(deep).toEqual(computePlayabilityRanking(matrix, playabilityAt(100)));
+    expect(getPlayabilityRanking(matrix, 20)).not.toEqual(deep);
   });
 });
 

@@ -90,8 +90,9 @@ describe("against public solver ranges", () => {
 
   /**
    * A tournament cold caller in position, 3-bets and flats, % of all hands.
-   * Flats get a looser cap: ours still grow a little with the opener's width
-   * where the reference's don't, which leaves the 100bb button flatting UTG 5pp short.
+   * The reference's flats barely grow with the opener's width and fall off
+   * seat by seat away from the button (coldCallWidthExponent,
+   * coldCallPerSeatBehind); the 100bb button flats UTG 19.6%.
    */
   it.each([
     [100, { "BTN/UTG": [6.0, 19.6], "BTN/HJ": [9.5, 17.4], "BTN/CO": [12.3, 17.1], "CO/LJ": [8.1, 11.6], "HJ/UTG": [6.0, 10.5] }],
@@ -102,7 +103,7 @@ describe("against public solver ranges", () => {
       const [hero, opener] = spot.split("/") as Position[];
       const [r, c] = ofAll(hands(MTT(stack), [[opener, "raise"]], hero));
       expect(Math.abs(r - raise), spot).toBeLessThanOrEqual(TOLERANCE);
-      expect(Math.abs(c - call), spot).toBeLessThanOrEqual(5.5);
+      expect(Math.abs(c - call), spot).toBeLessThanOrEqual(TOLERANCE);
     }
   });
 

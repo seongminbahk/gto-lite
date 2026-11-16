@@ -98,6 +98,12 @@ export const CASH_CALLER_SQUEEZE_KEEP_FACTOR = 0.85;
 /** A cold caller facing a squeeze re-raises at most this share of what it keeps (reference NL10 button: 3.5 shove, 23.7 call). */
 export const CASH_CALLED_RERAISE_SHARE_CAP = 0.15;
 export const RAISE_VALUE_SHARE = 0.6;
+/**
+ * Mixed 3-bets (FacingRaiseParams.threeBetMix): the share of all combos, at
+ * the top of the range, that 3-bets every time — about AA, KK and AKs. Fit
+ * to the public solver ranges' in-position cold callers at 40 and 100bb.
+ */
+export const MIXED_THREE_BET_CORE = 0.015;
 /** Cash 4-bets: a share of the 3-bettor's range, 40% of it bluffs, from the reference solver's NL10 button facing a BB 3-bet (15% of its range). */
 export const CASH_FOUR_BET_WIDTH_RATIO = 0.48;
 export const CASH_FOUR_BET_BLUFF_SHARE = 0.4;

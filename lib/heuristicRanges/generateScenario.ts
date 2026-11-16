@@ -13,6 +13,7 @@ import {
   BB_VS_LIMP_VALUE_WIDTH,
   BB_VS_LIMP_BLUFF_WIDTH,
   COLD_CALL_PER_SEAT_BEHIND,
+  MIXED_THREE_BET_CORE,
   RAISE_VALUE_SHARE,
   BASE_CONTINUE_THRESHOLD,
   RAISE_DEPTH_TIGHTEN_FACTOR,
@@ -138,6 +139,8 @@ export interface FacingRaiseParams {
   openerWidthExponent?: number;
   /** Seats left to act after hero; 0 means hero closes the action. */
   seatsBehind: number;
+  /** What a cold caller keeps for each seat behind it past two. Default COLD_CALL_PER_SEAT_BEHIND. */
+  coldCallPerSeatBehind?: number;
   /** 3-bet width as a share of the opener's width. */
   threeBetWidthRatio: number;
   /** Share of the BB's continuing range that a cold caller keeps: IP, with two seats behind. */
@@ -153,6 +156,14 @@ export interface FacingRaiseParams {
   closingContinueFactor: number;
   /** Share of the 3-bets that are value. Default RAISE_VALUE_SHARE. */
   threeBetValueShare?: number;
+  /**
+   * Against an open, how far the 3-bets move from value hands plus suited
+   * bluffs (0, the default) to mixed ones (1): the best hands up to
+   * MIXED_THREE_BET_CORE of all combos every time, and the rest an even
+   * slice of every hand that continues. A deep solver's in-position cold
+   * caller 3-bets that way; only the very top (AA, AKs) 3-bets every time.
+   */
+  threeBetMix?: number;
   /** ICM's price on the chips a call risks: they count this many times. Default 1, chip EV. */
   bubbleFactor?: number;
 }
@@ -169,7 +180,7 @@ function vsOpenContinueThreshold(params: FacingRaiseParams): number {
     params.seatsBehind === 0
       ? params.closingContinueFactor
       : params.coldCallBase *
-        Math.pow(COLD_CALL_PER_SEAT_BEHIND, params.seatsBehind - 2) *
+        Math.pow(params.coldCallPerSeatBehind ?? COLD_CALL_PER_SEAT_BEHIND, params.seatsBehind - 2) *
         (params.isIP ? (params.coldCallIpFactor ?? 1) : params.coldCallOopMultiplier);
   // The square root keeps a cheap call from pulling in nearly every hand: price matters less than the opener's range here.
   // Measured from the button's width, so an exponent of 0.5 is the plain square root of the opener's.
@@ -224,9 +235,49 @@ export function generateBbVsLimpScenario(ranking: PercentileRanking): HandFreque
   });
 }
 
+/** Continues with the best `continueThreshold`; 3-bets the top `core` every time and an even slice of the rest, `threeBetWidth` in all. */
+function mixedThreeBets(
+  ranking: PercentileRanking,
+  continueThreshold: number,
+  threeBetWidth: number,
+  core: number,
+  callFactor: number,
+): HandFrequency[] {
+  const shares = ALL_HANDS.map((h) => {
+    const percentile = ranking.get(h.hand) ?? 1;
+    return { h, continues: softInclude(percentile, continueThreshold), top: softInclude(percentile, Math.min(core, continueThreshold), Math.min(MIX_BUFFER, core)) };
+  });
+  const mass = (weight: (s: (typeof shares)[number]) => number) => shares.reduce((sum, s) => sum + s.h.combos * weight(s), 0) / TOTAL_COMBOS;
+  const coreMass = mass((s) => s.continues * s.top);
+  const restMass = mass((s) => s.continues * (1 - s.top));
+  const slice = restMass > 0 ? clamp((threeBetWidth - coreMass) / restMass, 0, 1) : 0;
+  return shares.map(({ h, continues, top }) => {
+    const raise = continues * (top + (1 - top) * slice);
+    const call = (continues - raise) * callFactor;
+    return { hand: h.hand, fold: 1 - raise - call, call, raise };
+  });
+}
+
 function generateVsOpenScenario(ranking: PercentileRanking, params: FacingRaiseParams): HandFrequency[] {
   const continueThreshold = vsOpenContinueThreshold(params);
   const threeBetWidth = Math.min(params.aggressorOpenWidth * params.threeBetWidthRatio, continueThreshold);
+  const mix = params.threeBetMix ?? 0;
+  const topAndBluffs = valueAndBluffThreeBets(ranking, params, continueThreshold, threeBetWidth);
+  if (mix === 0) return topAndBluffs;
+  const mixed = mixedThreeBets(ranking, continueThreshold, threeBetWidth, MIXED_THREE_BET_CORE, params.callFactor);
+  return topAndBluffs.map((h, i) => {
+    const raise = (1 - mix) * h.raise + mix * mixed[i].raise;
+    const call = (1 - mix) * h.call + mix * mixed[i].call;
+    return { hand: h.hand, fold: 1 - raise - call, call, raise };
+  });
+}
+
+function valueAndBluffThreeBets(
+  ranking: PercentileRanking,
+  params: FacingRaiseParams,
+  continueThreshold: number,
+  threeBetWidth: number,
+): HandFrequency[] {
   const valueThreshold = threeBetWidth * (params.threeBetValueShare ?? RAISE_VALUE_SHARE);
   const bluffs = threeBetBluffs(ranking, valueThreshold, threeBetWidth - valueThreshold);
   // The flats sit between the 3-bets and the continuing threshold; a caller in front narrows only that band.

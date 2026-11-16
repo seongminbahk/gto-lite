@@ -1,5 +1,5 @@
 import type { EquityMatrix } from "@/lib/equity/loadEquityMatrix";
-import { computePlayabilityRanking } from "@/lib/equity/handStrength";
+import { BASE_PLAYABILITY, computePlayabilityRanking, playabilityAt } from "@/lib/equity/handStrength";
 import { solvePushFold, type PushFoldResult } from "@/lib/nashSolver/pushFoldSolver";
 import { BB_ANTE_BB, BIG_BLIND_BB, SMALL_BLIND_BB } from "./constants";
 import { NO_RAKE_SETTINGS, type RakeSettings } from "./rake";
@@ -11,14 +11,22 @@ import { CHIP_EV, isChipEv, pushFoldPayoffs, type IcmStructure } from "./icm";
  * distinct input instead of on every request. Cached values are shared:
  * callers must treat them as read-only.
  */
-const rankingByMatrix = new WeakMap<EquityMatrix, Map<string, number>>();
+const rankingsByMatrix = new WeakMap<EquityMatrix, Map<string, Map<string, number>>>();
 const pushFoldByMatrix = new WeakMap<EquityMatrix, Map<string, PushFoldResult>>();
 
-export function getPlayabilityRanking(matrix: EquityMatrix): Map<string, number> {
-  let ranking = rankingByMatrix.get(matrix);
+/** The playability ranking at this effective stack (see playabilityAt); with no stack, the bonuses as they are. */
+export function getPlayabilityRanking(matrix: EquityMatrix, effectiveStackBb?: number): Map<string, number> {
+  const depth = effectiveStackBb === undefined ? BASE_PLAYABILITY : playabilityAt(effectiveStackBb);
+  const key = `${depth.bonusScale}|${depth.smallPairExtra}|${depth.suitedConnectorExtra}`;
+  let byDepth = rankingsByMatrix.get(matrix);
+  if (!byDepth) {
+    byDepth = new Map();
+    rankingsByMatrix.set(matrix, byDepth);
+  }
+  let ranking = byDepth.get(key);
   if (!ranking) {
-    ranking = computePlayabilityRanking(matrix);
-    rankingByMatrix.set(matrix, ranking);
+    ranking = computePlayabilityRanking(matrix, depth);
+    byDepth.set(key, ranking);
   }
   return ranking;
 }

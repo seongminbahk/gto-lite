@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadEquityMatrix } from "./loadEquityMatrix";
-import { computePlayabilityRanking, equityVsRandom } from "./handStrength";
+import { BASE_PLAYABILITY, computePlayabilityRanking, equityVsRandom, playabilityAt } from "./handStrength";
 
 describe("handStrength", () => {
   const matrix = loadEquityMatrix();
@@ -27,6 +27,21 @@ describe("handStrength", () => {
 
   it("gives AA higher equity vs random than 72o", () => {
     expect(equityVsRandom(matrix, "AA")).toBeGreaterThan(equityVsRandom(matrix, "72o"));
+  });
+
+  it("ranks small pairs and suited connectors higher the deeper the stacks", () => {
+    const at20 = computePlayabilityRanking(matrix, playabilityAt(20));
+    const at100 = computePlayabilityRanking(matrix, playabilityAt(100));
+    for (const hand of ["22", "54s", "76s"]) expect(at100.get(hand)!).toBeLessThan(at20.get(hand)!);
+    expect(at100.get("KTo")!).toBeGreaterThan(at20.get("KTo")!);
+    expect(at100.get("AA")!).toBe(at20.get("AA")!);
+  });
+
+  it("interpolates the depth bonuses between their stacks and holds them flat outside", () => {
+    expect(playabilityAt(10)).toEqual(playabilityAt(20));
+    expect(playabilityAt(150)).toEqual(playabilityAt(100));
+    expect(playabilityAt(70).bonusScale).toBeCloseTo((playabilityAt(40).bonusScale + playabilityAt(100).bonusScale) / 2, 9);
+    expect(computePlayabilityRanking(matrix, BASE_PLAYABILITY)).toEqual(ranking);
   });
 
   it("orders pocket pairs by rank", () => {

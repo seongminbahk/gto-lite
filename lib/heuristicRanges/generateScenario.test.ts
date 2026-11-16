@@ -226,6 +226,34 @@ describe("generateFacingRaiseScenario", () => {
     expect(byHand.get("KJo")!.raise).toBe(0);
   });
 
+  it("mixes 3-bets through the whole continuing range with threeBetMix, 3-betting as much overall", () => {
+    const wide = { ...base, aggressorOpenWidth: 0.46 };
+    const plain = generateFacingRaiseScenario(ranking, wide);
+    const mixed = generateFacingRaiseScenario(ranking, { ...wide, threeBetMix: 1 });
+    const half = new Map(generateFacingRaiseScenario(ranking, { ...wide, threeBetMix: 0.5 }).map((h) => [h.hand, h]));
+    // Exactly the 3-bet width, where value and bluffs land near it; the same continuing range.
+    expect(comboWeightedRaiseFrequency(mixed) / TOTAL_COMBOS).toBeCloseTo(wide.aggressorOpenWidth * wide.threeBetWidthRatio, 6);
+    expect(comboWeightedRaiseFrequency(mixed) / comboWeightedRaiseFrequency(plain)).toBeCloseTo(1, 1);
+    expect(Math.abs(continuingCombos(mixed) - continuingCombos(plain))).toBeLessThan(5);
+    const byHand = new Map(mixed.map((h) => [h.hand, h]));
+    // AA stays a 3-bet; KQs, a pure 3-bet before, now mostly flats; 76s, flatted before, 3-bets a slice.
+    expect(byHand.get("AA")!.raise).toBe(1);
+    expect(byHand.get("KQs")!.raise).toBeLessThan(0.5);
+    expect(byHand.get("KQs")!.raise).toBeCloseTo(byHand.get("76s")!.raise, 6);
+    expect(byHand.get("76s")!.raise).toBeGreaterThan(0);
+    expect(half.get("KQs")!.raise).toBeGreaterThan(byHand.get("KQs")!.raise);
+    for (const h of mixed) expect(h.fold + h.call + h.raise).toBeCloseTo(1, 6);
+  });
+
+  it("narrows a cold caller per seat behind with coldCallPerSeatBehind", () => {
+    const early = { ...base, seatsBehind: 5 };
+    expect(continuingCombos(generateFacingRaiseScenario(ranking, { ...early, coldCallPerSeatBehind: 0.8 }))).toBeLessThan(
+      continuingCombos(generateFacingRaiseScenario(ranking, early)),
+    );
+    // Two seats behind (the button) is where the share is set: the factor doesn't move it.
+    expect(generateFacingRaiseScenario(ranking, { ...base, coldCallPerSeatBehind: 0.8 })).toEqual(generateFacingRaiseScenario(ranking, base));
+  });
+
   it("keeps every frequency in [0, 1] when the 3-bet range is as wide as the continuing range", () => {
     for (const h of generateFacingRaiseScenario(ranking, { ...base, aggressorOpenWidth: 0.05, seatsBehind: 6, isIP: false, amountOwedBb: 10 })) {
       expect(h.fold).toBeGreaterThanOrEqual(-1e-9);
