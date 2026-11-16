@@ -135,4 +135,26 @@ describe("generateCallShoveScenario", () => {
   it("calls tighter under rake", () => {
     expect(calling({ potBb: 90, rake: { rate: 0.1, capBb: 30 } })).toBeLessThan(calling({ potBb: 90 }));
   });
+
+  it("with a jam defense, calls more of its range until the folding hands can't jam at a profit", () => {
+    // A tight value range against a tight jam, where the hands that would have folded get to jam instead.
+    const tight = { heroRange: range("AA KK QQ JJ TT AKs AKo AQs"), villainRange: range("AA KK"), potBb: 120, amountOwedBb: 84, rake: NO_RAKE };
+    const folding = range("72o 83o 94o J5o T4o 62s 53o Q3o K2o 95s");
+    const jamDefense = { foldingRange: folding, villainRiskBb: 96 };
+    const plain = continuing(generateCallShoveScenario(matrix, tight));
+    const defended = generateCallShoveScenario(matrix, { ...tight, jamDefense });
+    expect(continuing(defended)).toBeGreaterThan(plain);
+    expect(defended.find((h) => h.hand === "72o")!.fold).toBe(1);
+    // No defense is needed when the jams already lose: a pot with nothing to win.
+    expect(continuing(generateCallShoveScenario(matrix, { ...tight, potBb: 96.5, jamDefense: { ...jamDefense, villainRiskBb: 96 } }))).toBeGreaterThanOrEqual(plain);
+  });
+});
+
+describe("generateVsReraiseScenario minValueEquity", () => {
+  it("re-raises for value only hands ahead of the raiser by that much", () => {
+    const weak = solve({ heroRange: range("A4o A3o K8o Q2s J5s 76s"), villainRange: range(OPENER), raiseWidth: 0.02, minValueEquity: 0.5 });
+    expect(weak.every((h) => h.raise === 0)).toBe(true);
+    const strong = solve({ heroRange: range("AA KK A4o"), villainRange: range(OPENER), raiseWidth: 0.02, minValueEquity: 0.5 });
+    expect(strong.find((h) => h.hand === "AA")!.raise).toBeGreaterThan(0);
+  });
 });

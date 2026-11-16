@@ -59,6 +59,12 @@ export const RERAISE_KEEP_MIN = 0.15;
 export const RERAISE_KEEP_MAX = 0.75;
 /** A limper raised over re-raises at most this share of what it keeps, so its narrow range facing a wide raiser still calls. */
 export const RERAISE_MAX_SHARE_OF_KEPT = 1 / 3;
+/**
+ * A limper re-raises for value only hands ahead of the raiser's range. A
+ * limping range with nothing that strong would otherwise re-raise its
+ * relative best (A4o in cash), all of which folds to a jam.
+ */
+export const LIMP_RERAISE_MIN_EQUITY = 0.5;
 /** Share of combos BB raises over a limp. Heavier on value than a 3-bet: there are only so many suited bluffs. */
 export const BB_VS_LIMP_VALUE_WIDTH = 0.34;
 export const BB_VS_LIMP_BLUFF_WIDTH = 0.12;

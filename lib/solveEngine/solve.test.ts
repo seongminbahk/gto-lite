@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import { loadEquityMatrix } from "@/lib/equity/loadEquityMatrix";
 import { HAND_BY_LABEL } from "@/lib/handRange/handList";
 import type { ActionType, HandFrequency, Position } from "@/types/rangeData";
-import { TOURNAMENT_8 } from "./gameFormat";
+import { gameFormatById, TOURNAMENT_8, type GameFormat } from "./gameFormat";
 import { initialPotState, applyAction, type PotState } from "./potState";
 import { replayActionPath } from "./replay";
 import { solveActiveSeat } from "./solve";
+import { equityOf } from "@/lib/equity/loadEquityMatrix";
+import { aggressiveFrequencies } from "./postflopHandoff";
+import { weightedEquityVsRange } from "@/lib/nashSolver/pushFoldSolver";
 
 const matrix = loadEquityMatrix();
 
@@ -220,3 +223,59 @@ describe("solveActiveSeat", () => {
     });
   });
 });
+
+/** SB limps, BB raises, SB re-raises: a line built node by node, so check it holds together. */
+describe("the SB's limp-raise", () => {
+  const folds = (format: GameFormat) =>
+    (["UTG", "UTG1", "LJ", "HJ", "CO", "BTN"] as Position[]).filter((s) => !format.absentSeats.includes(s)).map((actor) => ({ actor, action: "fold" as ActionType }));
+  const at = (format: GameFormat, stack: number, moves: [Position, ActionType][]) => {
+    const r = replayActionPath([...folds(format), ...moves.map(([actor, action]) => ({ actor, action }))], stack, format);
+    if (r.status !== "active") throw new Error("expected a seat to act");
+    return { state: r.potState, hands: solveActiveSeat(matrix, r.activeSeat, r.potState, stack).hands };
+  };
+  const limpRaised: [Position, ActionType][] = [["SB", "call"], ["BB", "raise"]];
+
+  it.each([
+    ["cash 8-max", gameFormatById("cash-8")!, 100],
+    ["cash 6-max", gameFormatById("cash-6")!, 100],
+    ["tournament", TOURNAMENT_8, 100],
+  ] as const)("re-raises the %s BB's raise only with hands ahead of it", (_, format, stack) => {
+    const bb = at(format, stack, [["SB", "call"]]).hands;
+    const bbRaise = new Map(bb.map((h, i) => [h.hand, aggressiveFrequencies(bb)[i]]));
+    const sb = at(format, stack, limpRaised).hands;
+    for (const h of sb.filter((x) => x.raise > 0)) expect(weightedEquityVsRange(matrix, h.hand, bbRaise), h.hand).toBeGreaterThanOrEqual(0.5);
+    // A cash limping range has nothing that strong: it calls or folds.
+    if (format.allowsRake) expect(combosWith(sb, (h) => h.raise + (h.allin ?? 0))).toBe(0);
+  });
+
+  it("calls enough of a 100bb tournament limp-raise that the BB can't jam all it would fold", () => {
+    const stack = 100;
+    const limpRaise = at(TOURNAMENT_8, stack, limpRaised).hands;
+    const sbRange = new Map(limpRaise.map((h) => [h.hand, h.raise]));
+    const facing = at(TOURNAMENT_8, stack, [...limpRaised, ["SB", "raise"]]);
+    const jammed = at(TOURNAMENT_8, stack, [...limpRaised, ["SB", "raise"], ["BB", "allin"]]);
+    const calls = new Map(jammed.hands.map((h) => [h.hand, h.call]));
+    expect(combosWith(jammed.hands, (h) => h.call * (sbRange.get(h.hand) ?? 0))).toBeGreaterThan(0);
+    // What the BB gains by jamming each hand it would fold, over folding it.
+    const potBefore = facing.state.potBb;
+    const risk = (jammed.state.committed.BB ?? 0) - (facing.state.committed.BB ?? 0);
+    const finalPot = jammed.state.potBb + (jammed.state.currentBetToCall - (jammed.state.committed.SB ?? 0));
+    const sbCombos = combosWith(limpRaise, (h) => h.raise);
+    const gain = (hand: string) => {
+      let called = 0;
+      let equity = 0;
+      for (const h of limpRaise) {
+        const w = h.raise * (calls.get(h.hand) ?? 0) * HAND_BY_LABEL.get(h.hand)!.combos;
+        called += w;
+        equity += w * equityOf(matrix, hand, h.hand);
+      }
+      const callShare = called / sbCombos;
+      return (1 - callShare) * potBefore + callShare * ((equity / called) * finalPot - risk);
+    };
+    const bbFolds = facing.hands.filter((h) => h.fold > 0.5 && h.hand !== "AA");
+    const worst = ["72o", "32o", "T4o"].filter((x) => bbFolds.some((h) => h.hand === x));
+    expect(worst).toHaveLength(3);
+    for (const hand of worst) expect(gain(hand), hand).toBeLessThan(0);
+  });
+});
+

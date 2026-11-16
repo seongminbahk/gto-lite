@@ -1,4 +1,4 @@
-import type { EquityMatrix } from "@/lib/equity/loadEquityMatrix";
+import { equityOf, type EquityMatrix } from "@/lib/equity/loadEquityMatrix";
 import { ALL_HANDS, HAND_BY_LABEL, TOTAL_COMBOS } from "@/lib/handRange/handList";
 import { weightedEquityVsRange, type FrequencyMap } from "@/lib/nashSolver/pushFoldSolver";
 import { netPot, type RakeTerms } from "@/lib/solveEngine/rake";
@@ -38,26 +38,83 @@ export interface VsReraiseParams {
    * wrong for a flatting one, whose few strong hands are the ones that raise.
    */
   valueInDeckCombos?: boolean;
+  /** Hands with less equity than this against the raiser don't re-raise for value. Default: none. */
+  minValueEquity?: number;
   rake: RakeTerms;
   /** ICM's price on the chips a call risks: losing them counts this many times. Default 1, chip EV. */
   bubbleFactor?: number;
 }
 
-export type VsShoveParams = Pick<VsReraiseParams, "heroRange" | "villainRange" | "potBb" | "amountOwedBb" | "rake" | "bubbleFactor">;
+/**
+ * The hands that would fold to hero's raise rather than jam it, and what a jam
+ * adds to the pot. A range that only calls what beats the jamming range can
+ * fold so often that these hands jam at a profit: see generateCallShoveScenario.
+ */
+export interface JamDefense {
+  foldingRange: FrequencyMap;
+  villainRiskBb: number;
+}
+
+export type VsShoveParams = Pick<VsReraiseParams, "heroRange" | "villainRange" | "potBb" | "amountOwedBb" | "rake" | "bubbleFactor"> & {
+  jamDefense?: JamDefense;
+};
 
 /**
  * Facing a raise that all but gets the stacks in, equity is what a hand wins:
  * it calls if that beats the real price of the real pot. Nothing here re-raises.
+ * With `jamDefense`, it also calls with its best hands against the folding
+ * range until jamming all of that range no longer beats folding it.
  */
 export function generateCallShoveScenario(matrix: EquityMatrix, params: VsShoveParams): HandFrequency[] {
   const { heroRange, villainRange, potBb, rake } = params;
   const owed = params.amountOwedBb * (params.bubbleFactor ?? 1);
   const equityToCall = owed / netPot(potBb + owed, rake);
+  const calls = new Map(
+    ALL_HANDS.map((h) => [h.hand, (heroRange.get(h.hand) ?? 0) > 0 && weightedEquityVsRange(matrix, h.hand, villainRange) > equityToCall ? 1 : 0]),
+  );
+  if (params.jamDefense) defendAgainstJams(matrix, params, params.jamDefense, calls);
   return ALL_HANDS.map((h) => {
-    const reached = (heroRange.get(h.hand) ?? 0) > 0;
-    const call = reached && weightedEquityVsRange(matrix, h.hand, villainRange) > equityToCall ? 1 : 0;
+    const call = calls.get(h.hand)!;
     return { hand: h.hand, fold: 1 - call, call, raise: 0 };
   });
+}
+
+/** Adds calls, best against the folding range first, until jamming that whole range is worth no more than folding it. */
+function defendAgainstJams(matrix: EquityMatrix, params: VsShoveParams, defense: JamDefense, calls: Map<string, number>): void {
+  const { heroRange, potBb, amountOwedBb, rake } = params;
+  const potBeforeJam = potBb - defense.villainRiskBb;
+  const finalPot = netPot(potBb + amountOwedBb, rake);
+  const villains = ALL_HANDS.filter((v) => (defense.foldingRange.get(v.hand) ?? 0) > 0).map((v) => ({
+    hand: v.hand,
+    weight: defense.foldingRange.get(v.hand)! * v.combos,
+  }));
+  const heroes = ALL_HANDS.filter((h) => (heroRange.get(h.hand) ?? 0) > 0).map((h) => ({ hand: h.hand, weight: heroRange.get(h.hand)! * h.combos }));
+  const heroCombos = heroes.reduce((sum, h) => sum + h.weight, 0);
+  if (villains.length === 0 || heroCombos === 0) return;
+  // Per villain hand: hero combos that call, and the villain's equity summed over them.
+  const called = villains.map(() => 0);
+  const equitySum = villains.map(() => 0);
+  const addCall = (hand: string, weight: number) =>
+    villains.forEach((v, i) => {
+      called[i] += weight;
+      equitySum[i] += weight * equityOf(matrix, v.hand, hand);
+    });
+  for (const h of heroes) if (calls.get(h.hand) === 1) addCall(h.hand, h.weight);
+  const jamGain = () =>
+    villains.reduce((sum, v, i) => {
+      const callShare = called[i] / heroCombos;
+      const showdown = called[i] > 0 ? (equitySum[i] / called[i]) * finalPot - defense.villainRiskBb : 0;
+      return sum + v.weight * ((1 - callShare) * potBeforeJam + callShare * showdown);
+    }, 0);
+  const candidates = heroes
+    .filter((h) => calls.get(h.hand) !== 1)
+    .map((h) => ({ ...h, equity: weightedEquityVsRange(matrix, h.hand, defense.foldingRange) }))
+    .sort((a, b) => b.equity - a.equity);
+  for (const h of candidates) {
+    if (jamGain() <= 0) break;
+    calls.set(h.hand, 1);
+    addCall(h.hand, h.weight);
+  }
 }
 
 /**
@@ -103,8 +160,8 @@ export function generateVsReraiseScenario(
   // Of those, the ones with the most equity against the raiser re-raise for value. With
   // `valueInDeckCombos`, a range that mixes a few of its best hands in doesn't re-raise its middle to make up the count.
   const byEquity = [...reached].sort((x, y) => y.equity - x.equity);
-  for (const { hand, combos } of byEquity) {
-    if (raiseCombosLeft <= 0) break;
+  for (const { hand, combos, equity } of byEquity) {
+    if (raiseCombosLeft <= 0 || equity < (params.minValueEquity ?? 0)) break;
     const entry = frequencies.get(hand)!;
     const deckCombos = params.valueInDeckCombos ? HAND_BY_LABEL.get(hand)!.combos : combos;
     const raise = Math.min(entry.continueFreq, raiseCombosLeft / deckCombos);

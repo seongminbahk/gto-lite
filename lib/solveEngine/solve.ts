@@ -10,8 +10,8 @@ import {
   openWidthFor,
   type FacingRaiseParams,
 } from "@/lib/heuristicRanges/generateScenario";
-import { ICM_RISK_SPR_EXPONENT, RAISE_VALUE_SHARE, RAKE_CONTINUE_FALLOFF, RERAISE_KEEP_BASE } from "@/lib/heuristicRanges/config";
-import { generateCallShoveScenario, generateVsReraiseScenario, type VsReraiseParams } from "@/lib/heuristicRanges/vsReraise";
+import { ICM_RISK_SPR_EXPONENT, LIMP_RERAISE_MIN_EQUITY, RAISE_VALUE_SHARE, RAKE_CONTINUE_FALLOFF, RERAISE_KEEP_BASE } from "@/lib/heuristicRanges/config";
+import { generateCallShoveScenario, generateVsReraiseScenario, type JamDefense, type VsReraiseParams } from "@/lib/heuristicRanges/vsReraise";
 import type { FrequencyMap } from "@/lib/nashSolver/pushFoldSolver";
 import { firstInWidthsUnder, tunedAt, type FirstInAnchor, type GameFormat } from "./gameFormat";
 import { computeRawRaiseTo } from "./actionSizing";
@@ -175,6 +175,28 @@ function postedBlindBb(seat: Position): number {
   return seat === "SB" ? SMALL_BLIND_BB : seat === "BB" ? BIG_BLIND_BB : 0;
 }
 
+/**
+ * The SB re-raised the BB's raise over its own limp, and the BB jammed. That
+ * range is only the limp range's best hands, so calling only what beats the
+ * BB's jamming range folds so much that the BB could jam everything it would
+ * have folded. Returns those hands and what the jam added, or undefined
+ * anywhere else.
+ */
+function limpRaiseJamDefense(ctx: SpotContext): JamDefense | undefined {
+  const { ownDecision, potState, activeSeat } = ctx;
+  const limp = ownDecision?.state.lastDecision[activeSeat];
+  const jam = potState.lastDecision.BB;
+  const isoRaise = ownDecision?.state.lastDecision.BB;
+  // With no range of its own here (a line the strategy never takes), there is nothing to defend.
+  if (!handsFacingRaise(ctx) || activeSeat !== "SB" || ownDecision?.action !== "raise" || limp?.action !== "call" || limp.state.raiseDepth !== 0 || !jam || !isoRaise) return undefined;
+  // What the BB brought to the jam, and how often it would have folded each hand there instead.
+  const reached = rangeAfter(ctx.matrix, "BB", isoRaise, ctx.effectiveStackBb, ctx.rake, ctx.icm);
+  const answer = solveActiveSeat(ctx.matrix, "BB", jam.state, ctx.effectiveStackBb, ctx.rake, ctx.icm).hands;
+  const foldingRange = new Map(answer.map((h) => [h.hand, (reached.get(h.hand) ?? 0) * h.fold]));
+  const villainRiskBb = (potState.committed.BB ?? 0) - (jam.state.committed.BB ?? 0);
+  return { foldingRange, villainRiskBb };
+}
+
 function solveShoveSpot(ctx: SpotContext): SolvedNode {
   const { matrix, potState, rake, villainRange } = ctx;
   // A fresh shove is the game the Nash solver models; anything after more
@@ -189,6 +211,7 @@ function solveShoveSpot(ctx: SpotContext): SolvedNode {
         amountOwedBb: ctx.amountOwedBb,
         rake: rake.structure,
         bubbleFactor: ctx.allInBubbleFactor,
+        jamDefense: limpRaiseJamDefense(ctx),
       }),
     };
   }
@@ -297,6 +320,8 @@ function vsReraiseParams(ctx: FacingRaiseContext, heroRange: FrequencyMap, villa
       bluffWidth: 0,
       keepBase: RERAISE_KEEP_BASE,
       maxRaiseShareOfKept: format.calledReraiseShareCap,
+      // A re-raise that goes all-in wins the pot often enough on its own; one that doesn't has to be ahead.
+      ...(!reraisesAllIn(ctx) && { minValueEquity: LIMP_RERAISE_MIN_EQUITY }),
       rake: ctx.rake.structure,
     };
   }
