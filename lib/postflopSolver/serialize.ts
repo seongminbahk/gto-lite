@@ -1,8 +1,9 @@
 import type { SerializedCombo, SerializedTreeNode } from "@/types/postflopSolver";
 import type { CfrSolution } from "./cfr";
 import type { CheckdownEquitySummary } from "./checkdownEquity";
+import type { ComboValues } from "./comboValues";
 import { totalPot, type PostflopActionType, type PostflopPlayer, type PostflopPotState } from "./potState";
-import type { ChanceNode, PostflopTreeNode } from "./treeBuilder";
+import type { ChanceNode, DecisionNode, PostflopTreeNode } from "./treeBuilder";
 import type { ComboRange } from "./types";
 
 function actionLabel(action: PostflopActionType, actor: PostflopPlayer, childState: PostflopPotState): string {
@@ -34,6 +35,7 @@ export function serializeTree(
   solution: CfrSolution,
   checkdown?: Map<PostflopTreeNode, CheckdownEquitySummary>,
   nextStreetEv?: Map<ChanceNode, { heroEvBb: number; villainEvBb: number }>,
+  comboValues?: Map<DecisionNode, ComboValues>,
 ): SerializedTreeNode {
   if (node.type === "terminal-fold") {
     return {
@@ -67,10 +69,11 @@ export function serializeTree(
     potBb: totalPot(node.state),
     currentBetToCall: node.state.currentBetToCall,
     strategy: solution.getAverageStrategy(node),
+    comboValues: comboValues?.get(node),
     actions: node.actions.map(({ action, child }) => ({
       action,
       label: actionLabel(action, node.actor, child.state),
-      child: serializeTree(child, solution, checkdown, nextStreetEv),
+      child: serializeTree(child, solution, checkdown, nextStreetEv, comboValues),
     })),
   };
 }

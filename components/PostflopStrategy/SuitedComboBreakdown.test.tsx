@@ -87,3 +87,42 @@ describe("SuitedComboBreakdown", () => {
     expect(screen.getByText(/Bet 5bb 10.0%/)).toBeInTheDocument();
   });
 });
+
+describe("SuitedComboBreakdown values", () => {
+  it("shows each combo's EV, equity and EQR when the solve carries them", () => {
+    const withValues: SerializedDecisionNode = {
+      ...node,
+      comboValues: { ev: { P1: [6, 2], P2: [] }, equity: { P1: [0.8, 0.4], P2: [] } },
+    };
+    render(
+      <SuitedComboBreakdown
+        selectedHand="AKs"
+        node={withValues}
+        range={range}
+        board={["2c", "7d", "9s"]}
+        colors={buildActionColorScale(node.actions)}
+        heroLabel="BTN"
+        villainLabel="BB"
+      />,
+    );
+    const lines = screen.getAllByTestId("suited-combo-values").map((el) => el.textContent);
+    // EQR = EV / (equity × pot): 6 / 8 and 2 / 4.
+    expect(lines).toContain("EV 6.00bb · Equity 80.0% · EQR 75.0%");
+    expect(lines).toContain("EV 2.00bb · Equity 40.0% · EQR 50.0%");
+  });
+
+  it("shows no values for a tree without them", () => {
+    render(
+      <SuitedComboBreakdown
+        selectedHand="AKs"
+        node={node}
+        range={range}
+        board={["2c", "7d", "9s"]}
+        colors={buildActionColorScale(node.actions)}
+        heroLabel="BTN"
+        villainLabel="BB"
+      />,
+    );
+    expect(screen.queryByTestId("suited-combo-values")).toBeNull();
+  });
+});

@@ -15,6 +15,7 @@ import { narrowRangeAlongPath } from "@/lib/postflopSolver/rangeNarrowing";
 import { DEFAULT_TARGET_EXPLOITABILITY_PERCENT } from "@/lib/postflopSolver/cfr";
 import type { RakeStructure } from "@/lib/solveEngine/rake";
 import type { PostflopIcm } from "@/lib/postflopSolver/icmPayoffs";
+import type { RangeView } from "@/lib/postflopSolver/handValues";
 import type { ExplainContext } from "@/lib/explain/buildHandSummary";
 import type { ActionWeightKey, SerializedDecisionAction, SerializedTreeNode } from "@/types/postflopSolver";
 import type { HandFrequency } from "@/types/rangeData";
@@ -80,6 +81,7 @@ export function PostflopPanel(props: PostflopPanelProps) {
   const [fastFlop, setFastFlop] = useState(() => navigator.hardwareConcurrency <= FAST_FLOP_MAX_CORES);
   const [selectedHand, setSelectedHand] = useState<string | null>(null);
   const [isolatedActionIndex, setIsolatedActionIndex] = useState<number | null>(null);
+  const [rangeView, setRangeView] = useState<RangeView>("strategy");
   const [expandedPastStage, setExpandedPastStage] = useState<number | null>(null);
   const restore = useLineRestore(streets, props.initialLine, {
     confirmBoard: (stageIndex, cards) => confirmBoard(stageIndex, cards, fastFlop),
@@ -227,6 +229,14 @@ export function PostflopPanel(props: PostflopPanelProps) {
               currentNode.actor,
               stage.path,
             )}
+            opponentRange={narrowRangeAlongPath(
+              currentNode.actor === "P1" ? solveState.result.villainRange : solveState.result.heroRange,
+              currentNode.actor === "P1" ? "P2" : "P1",
+              stage.path,
+            )}
+            view={rangeView}
+            onViewChange={setRangeView}
+            icm={!!props.icm}
             board={stage.board}
             heroLabel={props.heroLabel}
             villainLabel={props.villainLabel}

@@ -219,6 +219,28 @@ export class NativeCfrEngine {
     );
   }
 
+  /**
+   * One player's EV per combo at `node` (combo order of that player's range),
+   * arriving with these reaches: chips relative to the root, NaN where no
+   * opponent hand reaches it. A split engine's trunk nodes read the last EV-mode
+   * evaluation instead, so the reaches only matter elsewhere — see eng_combo_ev.
+   */
+  comboEv(node: PostflopTreeNode, player: "P1" | "P2", reachP1: ArrayLike<number>, reachP2: ArrayLike<number>): Float32Array {
+    const index = this.flat.nodeIndex.get(node);
+    if (index === undefined) throw new Error("comboEv: node was not part of the solved tree");
+    const combos = player === "P1" ? this.heroCount : this.villainCount;
+    return withScratch(this.solver, reachP1.length * 4, (r1) =>
+      withScratch(this.solver, reachP2.length * 4, (r2) =>
+        withScratch(this.solver, combos * 4, (out) => {
+          this.solver.HEAPF32.set(reachP1, r1 / 4);
+          this.solver.HEAPF32.set(reachP2, r2 / 4);
+          this.solver._eng_combo_ev(this.handle, index, player === "P1" ? 0 : 1, r1, r2, out);
+          return this.solver.HEAPF32.slice(out / 4, out / 4 + combos);
+        }),
+      ),
+    );
+  }
+
   // ---------------------------------------------------------- threaded solves (solveThreadedSession)
 
   /** Makes this engine a split solve over `leafNodes` — see eng_partition. */
@@ -322,6 +344,8 @@ export interface NativeSolveSession {
   solution: CfrSolution;
   /** EV at each chance node that ends the root street, under the final average strategy. */
   nextStreetEv(): NextStreetEv;
+  /** One player's EV per combo at a root-street node, arriving with these reaches — see NativeCfrEngine.comboEv. */
+  comboEv(node: PostflopTreeNode, player: "P1" | "P2", reachP1: ArrayLike<number>, reachP2: ArrayLike<number>): Float32Array;
   dispose(): void;
 }
 
@@ -393,6 +417,7 @@ export function solveNativeSession(
             ({ node, reachP1, reachP2 }) => ({ node, ev: engine.nodeEv(node, reachP1, reachP2) }),
           ),
         ),
+      comboEv: (node, player, reachP1, reachP2) => engine.comboEv(node, player, reachP1, reachP2),
       dispose: () => engine.dispose(),
     };
   } catch (err) {
@@ -459,6 +484,8 @@ export function solveThreadedSession(
             ev: engine.trunkChanceEv(node),
           })),
         ),
+      // The trunk's last EV-mode evaluation already holds every root-street node's values.
+      comboEv: (node, player, reachP1, reachP2) => engine.comboEv(node, player, reachP1, reachP2),
       dispose: () => engine.dispose(),
     };
   } catch (err) {

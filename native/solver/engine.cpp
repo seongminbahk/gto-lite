@@ -767,6 +767,8 @@ void trunkEvalBackward(Engine& e, int node, int p, bool bestResponse, float* out
       for (int i = 0; i < nS; i++) out[i] += childValues[i];
     }
   }
+  // Kept for eng_combo_ev, as a chance node's are for eng_trunk_chance_ev.
+  if (!bestResponse) std::copy(out, out + nS, trunkEvalValues(e, node, p));
   arenaOf(e).top = mark;
 }
 
@@ -1209,6 +1211,32 @@ void eng_node_ev(Engine* e, int node, const float* reach1, const float* reach2, 
     double sum = 0;
     for (int i = 0; i < e->players[p].n; i++) sum += static_cast<double>(reach[p][i]) * values[i];
     out[p] = pairs > 0 ? sum / pairs : std::nan("");
+  }
+}
+
+/**
+ * Player p's EV for each of its combos at `node`, arriving with these reaches
+ * and playing the average strategy from then on: the combo's value over the
+ * opponent weight it can face there, in chips relative to the root as
+ * eng_node_ev's. NaN for a combo no opponent hand reaches the node with. In a
+ * split engine a trunk node reads what the last EV-mode evaluation left there
+ * (eng_exploitability_parallel), and the reaches given are not used.
+ */
+void eng_combo_ev(Engine* e, int node, int p, const float* reach1, const float* reach2, float* out) {
+  const Player& self = e->players[p];
+  const Player& opp = e->players[1 - p];
+  const bool trunk = !e->split.trunkIndex.empty() && e->split.trunkIndex[node] >= 0;
+  const float* oppReach = trunk ? trunkEvalReach(*e, node, 1 - p) : (p == 0 ? reach2 : reach1);
+  if (trunk) {
+    std::copy(trunkEvalValues(*e, node, p), trunkEvalValues(*e, node, p) + self.n, out);
+  } else {
+    evaluateNode(*e, node, p, false, oppReach, out);
+    arenaOf(*e).top = 0;
+  }
+  const CardSums s = cardSums(opp, oppReach);
+  for (int i = 0; i < self.n; i++) {
+    const double mass = live(self, i, s, oppReach);
+    out[i] = mass > 1e-12 ? static_cast<float>(out[i] / mass) : std::nanf("");
   }
 }
 

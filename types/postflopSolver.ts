@@ -4,8 +4,9 @@ import type { HandFrequency } from "./rangeData";
 import type { PostflopActionType, PostflopPlayer } from "@/lib/postflopSolver/potState";
 import type { ExploitabilityResult } from "@/lib/postflopSolver/exploitability";
 import type { CheckdownEquitySummary } from "@/lib/postflopSolver/checkdownEquity";
+import type { ComboValues } from "@/lib/postflopSolver/comboValues";
 
-export type { CheckdownEquitySummary };
+export type { CheckdownEquitySummary, ComboValues };
 
 /** "sizes" is a flop's first pass, which picks its bet sizes (flopSizing.ts). */
 export type PostflopSolvePhase = "equity" | "sizes" | "cfr";
@@ -59,6 +60,8 @@ export interface SerializedDecisionNode {
   actions: SerializedDecisionAction[];
   /** [comboIndex][actionIndex], comboIndex aligned to heroRange if actor is P1, else villainRange. */
   strategy: number[][];
+  /** Both players' per-combo EV and equity here — see comboValues.ts. Missing on trees from before it existed. */
+  comboValues?: ComboValues;
 }
 
 export interface SerializedTerminalNode {

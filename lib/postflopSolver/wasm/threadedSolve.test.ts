@@ -69,6 +69,31 @@ describe("solveThreadedSession", () => {
         expect(threadedEv.get(node)!.heroEvBb).toBeCloseTo(ev.heroEvBb, 4);
         expect(threadedEv.get(node)!.villainEvBb).toBeCloseTo(ev.villainEvBb, 4);
       }
+
+      // Per combo, at every root-street decision: the trunk's stored values match a fresh evaluation.
+      let compared = 0;
+      (function walk(node: PostflopTreeNode, reachP1: number[], reachP2: number[]) {
+        if (node.type !== "decision") return;
+        for (const player of ["P1", "P2"] as const) {
+          const a = threaded.comboEv(node, player, reachP1, reachP2);
+          const b = whole.comboEv(node, player, reachP1, reachP2);
+          b.forEach((ev, i) => {
+            if (Number.isNaN(ev)) expect(a[i]).toBeNaN();
+            else expect(Math.abs(a[i] - ev)).toBeLessThan(1e-3);
+            compared++;
+          });
+        }
+        const strategy = whole.solution.getAverageStrategy(node);
+        node.actions.forEach(({ child }, k) => {
+          const narrow = (reach: number[]) => reach.map((r, c) => r * strategy[c][k]);
+          walk(child, node.actor === "P1" ? narrow(reachP1) : reachP1, node.actor === "P2" ? narrow(reachP2) : reachP2);
+        });
+      })(
+        tree,
+        hero.map((c) => c.weight),
+        villain.map((c) => c.weight),
+      );
+      expect(compared).toBeGreaterThan(0);
     } finally {
       threaded.dispose();
       whole.dispose();

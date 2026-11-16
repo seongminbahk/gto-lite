@@ -3,6 +3,7 @@ import type { PostflopSolveInMessage, PostflopWorkerOutMessage } from "@/types/p
 import { solvePostflopStreet } from "../solvePostflop";
 import { serializeCombos, serializeTree } from "../serialize";
 import { computeCheckdownEquities } from "../checkdownEquity";
+import { computeComboValues } from "../comboValues";
 import { loadWebSolverModule } from "../wasm/loadWeb";
 import { toSolveInput } from "./solveInput";
 
@@ -34,7 +35,10 @@ self.onmessage = async (event: MessageEvent<PostflopSolveInMessage>) => {
     );
     // A lookahead solve (flop, turn): its EV at each street change, read while the engine is still alive.
     const nextStreetEv = result.session?.nextStreetEv();
-    const tree = serializeTree(result.tree, result.solution, checkdown, nextStreetEv);
+    const comboValues = result.session
+      ? computeComboValues(result.tree, result.solution, result.heroRange, result.villainRange, result.equityTable, result.session)
+      : undefined;
+    const tree = serializeTree(result.tree, result.solution, checkdown, nextStreetEv, comboValues);
     result.session?.dispose();
 
     const message: PostflopWorkerOutMessage = {

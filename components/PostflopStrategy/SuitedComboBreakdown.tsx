@@ -2,6 +2,7 @@ import { CardChip } from "@/components/PostflopBoard/CardChip";
 import { comboKey } from "@/lib/cards";
 import { buildComboIndex, enumerateCombos, filterBlockedCombos } from "@/lib/postflopSolver/combos";
 import { formatPercent } from "@/lib/format";
+import { comboValueAt, equityRealization } from "@/lib/postflopSolver/handValues";
 import type { SerializedCombo, SerializedDecisionNode } from "@/types/postflopSolver";
 import { useMessages } from "@/lib/i18n/locale";
 
@@ -22,9 +23,8 @@ interface SuitedComboBreakdownProps {
  * physical combos depending on suit, and board card removal means each live
  * one can have a different strategy. This breaks a selected canonical hand
  * down into its individual live (not board-blocked) suited combos, each with
- * its own action-frequency breakdown — frequency only, no EV (see the plan
- * doc: per-combo EV at an arbitrary decision node isn't computed anywhere
- * in the solver yet).
+ * its own action-frequency breakdown, and its EV, equity and equity
+ * realization here when the solve carries them (comboValues.ts).
  */
 export function SuitedComboBreakdown({ selectedHand, node, range, board, colors, heroLabel, villainLabel }: SuitedComboBreakdownProps) {
   const t = useMessages();
@@ -88,11 +88,29 @@ export function SuitedComboBreakdown({ selectedHand, node, range, board, colors,
                     );
                   })}
                 </div>
+                <ComboValueLine node={node} index={idx} />
               </>
             )}
           </div>
         );
       })}
     </div>
+  );
+}
+
+/** A combo's EV, equity and EQR at this node, as one line; nothing for a tree without values. */
+function ComboValueLine({ node, index }: { node: SerializedDecisionNode; index: number }) {
+  const t = useMessages();
+  const value = comboValueAt(node, node.actor, index);
+  if (!value) return null;
+  const eqr = equityRealization(value, node.potBb);
+  return (
+    <p className="font-mono text-xs tabular-nums text-ink" data-testid="suited-combo-values">
+      {t.solve.comboValues(
+        Number.isFinite(value.ev) ? value.ev.toFixed(2) : "—",
+        (value.equity * 100).toFixed(1),
+        eqr === undefined || !Number.isFinite(eqr) ? "—" : formatPercent(eqr),
+      )}
+    </p>
   );
 }

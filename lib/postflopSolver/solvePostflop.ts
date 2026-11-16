@@ -11,7 +11,7 @@ import type { CfrSolution } from "./cfr";
 import type { RakeTerms } from "@/lib/solveEngine/rake";
 import type { PostflopIcm } from "./icmPayoffs";
 import type { ExploitabilityResult } from "./exploitability";
-import { runNativeCfr, solveNativeSession, solveThreadedSession, type NativeSolveSession } from "./wasm/engine";
+import { solveNativeSession, solveThreadedSession, type NativeSolveSession } from "./wasm/engine";
 import { RunoutEquity } from "./wasm/runoutEquity";
 import type { SolverModule } from "./wasm/solverModule";
 
@@ -114,9 +114,9 @@ export interface PostflopSolveResult {
   /** The board-fixed equity table this solve was run against — reused by checkdownEquity.ts to report per-node showdown averages without recomputing anything. */
   equityTable: EquityTable;
   /**
-   * Set when the solve looked ahead past its street (a flop or turn solve):
-   * the engine is kept alive so the caller can read values
-   * below the street's end (session.nextStreetEv) before disposing it, which it must.
+   * The engine, kept alive so the caller can read values from it (per-combo EVs,
+   * and below the street's end session.nextStreetEv) before disposing it, which
+   * it must. Missing only when there was nothing to solve.
    */
   session?: NativeSolveSession;
 }
@@ -225,16 +225,13 @@ function solveWithTables(
   const tree = lookahead
     ? buildHandTree(input.startPot, input.effectiveStackBb, input.board, { ...lookahead, firstStreetSizing })
     : buildStreetTree(input.startPot, input.effectiveStackBb, street, firstStreetSizing);
-  let session: NativeSolveSession | undefined;
-  let solution: CfrSolution;
-  if (lookahead) {
-    session = solveLookahead(tree, "cfr");
-    solution = session.solution;
-  } else {
-    solution = runNativeCfr(engine.solver, inputFor(tree), cfrOptions, (done, total, exploitabilityPercent) =>
-      onProgress?.("cfr", done, total, exploitabilityPercent),
-    );
-  }
+  // A river is one street on one thread; it too keeps its engine, for per-combo EVs (comboValues.ts).
+  const session: NativeSolveSession = lookahead
+    ? solveLookahead(tree, "cfr")
+    : solveNativeSession(engine.solver, inputFor(tree), cfrOptions, (done, total, exploitabilityPercent) =>
+        onProgress?.("cfr", done, total, exploitabilityPercent),
+      );
+  const solution: CfrSolution = session.solution;
   const exploitability = solution.finalExploitability!;
 
   return { tree, heroRange, villainRange, solution, exploitability, equityTable, session };

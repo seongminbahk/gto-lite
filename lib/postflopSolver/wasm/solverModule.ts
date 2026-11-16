@@ -45,6 +45,7 @@ export interface SolverModule {
   _eng_iterate(engine: number, firstT: number, count: number): void;
   _eng_exploitability(engine: number, out: number): void;
   _eng_node_ev(engine: number, node: number, reach1: number, reach2: number, out: number): void;
+  _eng_combo_ev(engine: number, node: number, player: number, reach1: number, reach2: number, out: number): void;
   _eng_average_strategy(engine: number, node: number, out: number): void;
 
   /** Split solves: eng_partition, then a pthread pool working through the leaves (threaded builds; one thread otherwise). */
