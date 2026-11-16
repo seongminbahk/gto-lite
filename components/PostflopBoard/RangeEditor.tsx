@@ -48,7 +48,7 @@ export function RangeEditor({ label, initial, chart, onApply, onCancel }: RangeE
   }
 
   return (
-    <section data-testid="range-editor" className="flex flex-col gap-2">
+    <section data-testid="range-editor" className="flex flex-col gap-2 lg:min-h-0 lg:flex-1">
       <div className="flex flex-wrap items-baseline gap-x-2">
         <h3 className="text-sm font-medium text-ink">{t.ranges.edit(label)}</h3>
         <span className="text-xs tabular-nums text-ink-muted">{t.ranges.size(rangeCombos(weights).toFixed(0), formatPercent(rangeShare(weights)))}</span>
@@ -59,7 +59,7 @@ export function RangeEditor({ label, initial, chart, onApply, onCancel }: RangeE
         <textarea
           value={text}
           onChange={(e) => handleText(e.target.value)}
-          rows={4}
+          rows={3}
           spellCheck={false}
           aria-invalid={error !== null}
           className="w-full resize-y rounded border border-line-strong bg-sunken p-2 font-mono text-xs text-ink"
@@ -70,10 +70,10 @@ export function RangeEditor({ label, initial, chart, onApply, onCancel }: RangeE
           {t.ranges.errors[error.error](error.token)}
         </p>
       )}
-      <div className="mx-auto w-full max-w-md">
-        <HandMatrixGrid alwaysSquare legend={[]} renderCell={(hand) => <WeightCell hand={hand} weight={weights.get(hand) ?? 0} onClick={() => toggle(hand)} />} />
+      <div className="w-full lg:min-h-0 lg:flex-1">
+        <HandMatrixGrid fitHeight legend={[]} renderCell={(hand) => <WeightCell hand={hand} weight={weights.get(hand) ?? 0} onClick={() => toggle(hand)} />} />
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="sticky bottom-2 flex shrink-0 flex-wrap gap-2 rounded bg-surface/90 py-1 lg:static lg:bg-transparent lg:py-0">
         <button type="button" onClick={() => show(new Map(chart))} className={`${BUTTON} border border-line-strong text-ink hover:bg-raised`}>
           {t.ranges.reset}
         </button>

@@ -16,6 +16,8 @@ interface HandMatrixGridProps {
   hideLegendOnSmallScreens?: boolean;
   /** Stay square on a desktop too, for a grid that isn't filling the screen's height. */
   alwaysSquare?: boolean;
+  /** On a desktop, a square as tall as the parent allows (no wider than it), for grids sharing the screen with others. */
+  fitHeight?: boolean;
 }
 
 const GRID_STYLE = {
@@ -28,13 +30,17 @@ const GRID_STYLE = {
  * full 13x13 grid fits without scrolling. A phone has too little height for
  * that, so there the grid is square, as wide as it can be, and the page scrolls.
  */
-export function HandMatrixGrid({ renderCell, legend, detail, hideLegendOnSmallScreens, alwaysSquare }: HandMatrixGridProps) {
+export function HandMatrixGrid({ renderCell, legend, detail, hideLegendOnSmallScreens, alwaysSquare, fitHeight }: HandMatrixGridProps) {
+  // The parent's box is the container, so the square takes the smaller of its width and height.
+  const sizing = fitHeight
+    ? "lg:size-[min(100cqw,100cqh)] lg:max-w-none"
+    : alwaysSquare
+      ? ""
+      : "lg:mx-0 lg:aspect-auto lg:min-h-0 lg:max-w-none lg:flex-1";
   return (
-    <div className={`flex flex-col gap-2 ${alwaysSquare ? "" : "lg:h-full lg:min-h-0"}`}>
+    <div className={`flex flex-col gap-2 ${alwaysSquare ? "" : "lg:h-full lg:min-h-0"} ${fitHeight ? "lg:[container-type:size]" : ""}`}>
       <div
-        className={`mx-auto grid aspect-square w-full max-w-[100dvh] gap-[2px] ${
-          alwaysSquare ? "" : "lg:mx-0 lg:aspect-auto lg:min-h-0 lg:max-w-none lg:flex-1"
-        }`}
+        className={`mx-auto grid aspect-square w-full max-w-[100dvh] gap-[2px] ${sizing}`}
         style={GRID_STYLE}
       >
         {HAND_MATRIX.flatMap((row) => row.map((hand) => <Fragment key={hand}>{renderCell(hand)}</Fragment>))}
