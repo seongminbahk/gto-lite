@@ -29,7 +29,7 @@ It does not replace a full solver. It trades some accuracy for speed and ease, a
 | | Result | Measured against |
 | :-- | :-- | :-- |
 | **Flop solve time** | about 10 s | Chrome on a 10-core laptop (Apple M4) |
-| **Flop solve, loss** | 1.7% of the pot (0.2–2.5%) | a solve of the complete tree with every candidate bet size, seven spots |
+| **Flop solve, loss** | 0.95% of the pot (0.6–1.6%) | a solve of the complete tree with every candidate bet size, seven spots |
 | **Fast flop, loss** | 3.3% of the pot (0.9–6.6%) | the same |
 | **Preflop opens** | 87–94% of hands agree | public solver ranges, hand by hand |
 | **Preflop facing an open** | 85–89% | the same |

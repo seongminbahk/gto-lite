@@ -57,11 +57,14 @@ export type PostflopSolveInput =
  * Against 10 stratified turns, 16 clustered ones took a BTN-vs-BB spot from
  * 1.76% to 1.27%, narrowed SRPs from 2.65% to 2.06% and 3-bet pots from 3.44% to
  * 2.09%, better on all 10 boards, and 3.35% to 1.59% on 3 boards held back from
- * tuning. 12 cards made one worse. Those figures are from the 50/100% flop menu. With
- * the sizes picked first (flopSizing), a BTN-vs-BB flop takes 2.6 to 3.7s in
- * Node on nine threads, the pick included.
+ * tuning. 12 cards made one worse. Those figures are from the 50/100% flop menu.
+ * With the sizes picked first (flopSizing), on seven spots (--size-pick), more
+ * rivers mattered more than more turns: 16 turns × 6 rivers lost 1.74% on
+ * average, × 12 rivers 1.13%, and 24 × 12 0.95% (0.59–1.63%). On the app's own
+ * 100bb ranges and four threads, 24 × 12 takes a BTN-vs-BB flop 16–31s instead
+ * of 8–11s, and at most 824MB of the 4GB WASM memory.
  */
-export const FLOP_LOOKAHEAD = { turnCards: 16, riverCards: 6 };
+export const FLOP_LOOKAHEAD = { turnCards: 24, riverCards: 12 };
 
 /** The opt-in quicker flop lookahead: stratified turns, then a checkdown. */
 export const FLOP_FAST_LOOKAHEAD = { turnCards: 10, riverCards: 0 };
