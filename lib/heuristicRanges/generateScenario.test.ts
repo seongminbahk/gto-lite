@@ -8,8 +8,10 @@ import {
   generateFacingRaiseScenario,
   generateOpeningScenario,
   generateSbFirstInScenario,
+  isBlindBluffCandidate,
   openWidthFor,
 } from "./generateScenario";
+import { HAND_BY_LABEL } from "@/lib/handRange/handList";
 
 const ranking = computePlayabilityRanking(loadEquityMatrix());
 
@@ -140,6 +142,28 @@ describe("generateBbVsLimpScenario", () => {
     expect(byHand.get("AA")!.raise).toBe(1);
     expect(byHand.get("54s")!.raise).toBe(1);
     expect(byHand.get("72o")!.call).toBe(1);
+  });
+});
+
+describe("generateBbVsLimpScenario, mixed", () => {
+  it("raises its best hands every time and the same slice of every other hand", () => {
+    const hands = generateBbVsLimpScenario(ranking, { valueWidth: 0.12, slice: 0.3 });
+    const byHand = new Map(hands.map((h) => [h.hand, h]));
+    for (const h of hands) {
+      expect(h.fold).toBe(0);
+      expect(h.call + h.raise).toBeCloseTo(1, 6);
+      expect(h.raise).toBeGreaterThanOrEqual(0.3 - 1e-9);
+    }
+    expect(byHand.get("AA")!.raise).toBe(1);
+    expect(byHand.get("72o")!.raise).toBeCloseTo(0.3, 6);
+    expect(byHand.get("54s")!.raise).toBeCloseTo(0.3, 6);
+  });
+});
+
+describe("isBlindBluffCandidate", () => {
+  it("takes offsuit aces and broadways and low suited kings and queens, not pairs, suited aces or connectors", () => {
+    for (const hand of ["A4o", "AJo", "KTo", "K8o", "QTo", "K2s", "Q4s"]) expect(isBlindBluffCandidate(HAND_BY_LABEL.get(hand)!), hand).toBe(true);
+    for (const hand of ["77", "A5s", "76s", "KTs", "Q9o", "J9o", "Q6s"]) expect(isBlindBluffCandidate(HAND_BY_LABEL.get(hand)!), hand).toBe(false);
   });
 });
 
@@ -277,5 +301,43 @@ describe("generateFacingRaiseScenario", () => {
     const raked = generateFacingRaiseScenario(ranking, { ...base, seatsBehind: 0, continueFactor: 0.85 });
     expect(continuingCombos(raked)).toBeLessThan(continuingCombos(full));
     expect(raked.map((h) => h.raise)).toEqual(full.map((h) => h.raise));
+  });
+});
+
+describe("a blind's 3-bet bluffs", () => {
+  const params = {
+    raiseDepth: 1,
+    isIP: false,
+    potBb: 3.5,
+    amountOwedBb: 1.5,
+    aggressorOpenWidth: 0.4,
+    seatsBehind: 0,
+    threeBetWidthRatio: 0.35,
+    coldCallBase: COLD_CALL_BASE,
+    continueFactor: 1,
+    coldCallOopMultiplier: 0.6,
+    callFactor: 1,
+    closingContinueFactor: 1,
+  };
+  const raised = (hands: ReturnType<typeof generateFacingRaiseScenario>) =>
+    hands.reduce((sum, h) => sum + h.raise * HAND_BY_LABEL.get(h.hand)!.combos, 0) / TOTAL_COMBOS;
+
+  it("come from offsuit and low-kicker hands that continue, as many as the suited bluffs would be", () => {
+    const suited = generateFacingRaiseScenario(ranking, params);
+    const blind = generateFacingRaiseScenario(ranking, { ...params, blindBluffMaxShare: 0.8 });
+    const byHand = new Map(blind.map((h) => [h.hand, h]));
+    expect(raised(blind)).toBeCloseTo(raised(suited), 2);
+    expect(byHand.get("A5s")!.raise).toBeLessThan(new Map(suited.map((h) => [h.hand, h])).get("A5s")!.raise);
+    expect(byHand.get("KTo")!.raise).toBeGreaterThan(0);
+    expect(byHand.get("KTo")!.raise).toBeLessThanOrEqual(0.8);
+    // A bluff is a hand that would have continued anyway: the fold region is untouched.
+    for (const h of blind) expect(h.fold).toBeCloseTo(suited.find((x) => x.hand === h.hand)!.fold, 6);
+  });
+
+  it("keep some suited bluffs when asked", () => {
+    const half = new Map(generateFacingRaiseScenario(ranking, { ...params, blindBluffMaxShare: 0.8, blindSuitedBluffShare: 0.5 }).map((h) => [h.hand, h]));
+    const none = new Map(generateFacingRaiseScenario(ranking, { ...params, blindBluffMaxShare: 0.8 }).map((h) => [h.hand, h]));
+    const suitedRaise = (m: Map<string, { raise: number }>) => ["A5s", "A4s", "A3s", "A2s", "76s", "65s"].reduce((s, h) => s + m.get(h)!.raise, 0);
+    expect(suitedRaise(half)).toBeGreaterThan(suitedRaise(none));
   });
 });

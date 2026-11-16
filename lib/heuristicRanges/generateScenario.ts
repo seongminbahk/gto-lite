@@ -166,6 +166,15 @@ export interface FacingRaiseParams {
   threeBetMix?: number;
   /** ICM's price on the chips a call risks: they count this many times. Default 1, chip EV. */
   bubbleFactor?: number;
+  /**
+   * A blind against an open: 3-bet bluffs are an even slice, up to this share
+   * each, of the continuing hands that play worst out of position — offsuit
+   * aces and broadways, and suited kings and queens with a low kicker — rather
+   * than suited aces and connectors, which call. Unset: the suited bluffs.
+   */
+  blindBluffMaxShare?: number;
+  /** With blindBluffMaxShare: the share of the bluffs that stay suited (the default candidates), the rest going to the blind's. Default 0. */
+  blindSuitedBluffShare?: number;
 }
 
 function potOddsAdjustFor(params: FacingRaiseParams): number {
@@ -226,8 +235,45 @@ function threeBetBluffs(ranking: PercentileRanking, valueThreshold: number, bluf
   return bluffs;
 }
 
+/** Offsuit aces and broadways, and suited kings and queens with a kicker of five or lower: they play poorly as calls out of position. */
+export function isBlindBluffCandidate(h: CanonicalHand): boolean {
+  if (h.type === "pair") return false;
+  if (h.type === "offsuit") return h.rankHigh === "A" || h.rankHigh === "K" || (h.rankHigh === "Q" && RANKS.indexOf(h.rankLow) <= RANKS.indexOf("T"));
+  return (h.rankHigh === "K" || h.rankHigh === "Q") && RANKS.indexOf(h.rankLow) >= RANKS.indexOf("5");
+}
+
+/** An even slice, at most `maxShare`, of the continuing blind-bluff candidates outside the value range, `bluffWidth` of all combos in all. */
+function blindThreeBetBluffs(
+  ranking: PercentileRanking,
+  valueThreshold: number,
+  continueThreshold: number,
+  bluffWidth: number,
+  maxShare: number,
+): Map<string, number> {
+  const weights = new Map<string, number>();
+  let mass = 0;
+  for (const h of ALL_HANDS) {
+    if (!isBlindBluffCandidate(h)) continue;
+    const percentile = ranking.get(h.hand) ?? 1;
+    const w = softInclude(percentile, continueThreshold) * (1 - softInclude(percentile, valueThreshold));
+    if (w <= 0) continue;
+    weights.set(h.hand, w);
+    mass += w * h.combos;
+  }
+  const slice = mass > 0 ? clamp((bluffWidth * TOTAL_COMBOS) / mass, 0, maxShare) : 0;
+  return new Map([...weights].map(([hand, w]) => [hand, w * slice]));
+}
+
 /** BB behind a limp: raises value and bluffs, checks the rest. Checking is free, so it never folds. */
-export function generateBbVsLimpScenario(ranking: PercentileRanking): HandFrequency[] {
+export function generateBbVsLimpScenario(ranking: PercentileRanking, mixed?: { valueWidth: number; slice: number }): HandFrequency[] {
+  if (mixed) {
+    // A solver raises its best hands every time and a slice of nearly every other hand, weak offsuit ones included.
+    return ALL_HANDS.map((h) => {
+      const value = softInclude(ranking.get(h.hand) ?? 1, mixed.valueWidth);
+      const raise = value + (1 - value) * mixed.slice;
+      return { hand: h.hand, fold: 0, call: 1 - raise, raise };
+    });
+  }
   const bluffs = threeBetBluffs(ranking, BB_VS_LIMP_VALUE_WIDTH, BB_VS_LIMP_BLUFF_WIDTH);
   return ALL_HANDS.map((h) => {
     const raise = Math.max(softInclude(ranking.get(h.hand) ?? 1, BB_VS_LIMP_VALUE_WIDTH), bluffs.get(h.hand) ?? 0);
@@ -279,7 +325,17 @@ function valueAndBluffThreeBets(
   threeBetWidth: number,
 ): HandFrequency[] {
   const valueThreshold = threeBetWidth * (params.threeBetValueShare ?? RAISE_VALUE_SHARE);
-  const bluffs = threeBetBluffs(ranking, valueThreshold, threeBetWidth - valueThreshold);
+  const bluffWidth = threeBetWidth - valueThreshold;
+  let bluffs: Map<string, number>;
+  if (params.blindBluffMaxShare === undefined) {
+    bluffs = threeBetBluffs(ranking, valueThreshold, bluffWidth);
+  } else {
+    const suitedShare = params.blindSuitedBluffShare ?? 0;
+    const suited = threeBetBluffs(ranking, valueThreshold, bluffWidth * suitedShare);
+    const blind = blindThreeBetBluffs(ranking, valueThreshold, continueThreshold, bluffWidth * (1 - suitedShare), params.blindBluffMaxShare);
+    bluffs = new Map([...suited]);
+    for (const [hand, share] of blind) bluffs.set(hand, Math.min(1, (bluffs.get(hand) ?? 0) + share));
+  }
   // The flats sit between the 3-bets and the continuing threshold; a caller in front narrows only that band.
   const callThreshold =
     params.callFactor === 1 ? continueThreshold : threeBetWidth + (continueThreshold - threeBetWidth) * params.callFactor;

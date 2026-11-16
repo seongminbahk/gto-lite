@@ -53,7 +53,7 @@ export const EQUITY_REALIZATION_IP = 0.9;
 export const EQUITY_REALIZATION_OOP = 0.75;
 export const RERAISE_KEEP_BASE = 0.5;
 /** Cash keeps less: the reference solver's NL10 button continues 29% of its range against a 13.5bb BB 3-bet, bluffs included. */
-export const CASH_RERAISE_KEEP_BASE = 0.27;
+export const CASH_RERAISE_KEEP_BASE = 0.35;
 export const RERAISE_KEEP_PER_EQUITY = 1.5;
 export const RERAISE_KEEP_MIN = 0.15;
 export const RERAISE_KEEP_MAX = 0.75;
@@ -100,7 +100,7 @@ export const CASH_OVERCALL_FACTOR_OOP_CALLER = 0.62;
  * plain 3-bet: the opener (a caller still behind it), and the caller itself.
  */
 export const CASH_SQUEEZE_KEEP_FACTOR = 0.55;
-export const CASH_CALLER_SQUEEZE_KEEP_FACTOR = 0.85;
+export const CASH_CALLER_SQUEEZE_KEEP_FACTOR = 0.68;
 /** A cold caller facing a squeeze re-raises at most this share of what it keeps (reference NL10 button: 3.5 shove, 23.7 call). */
 export const CASH_CALLED_RERAISE_SHARE_CAP = 0.15;
 export const RAISE_VALUE_SHARE = 0.6;
@@ -111,7 +111,7 @@ export const RAISE_VALUE_SHARE = 0.6;
  */
 export const MIXED_THREE_BET_CORE = 0.015;
 /** Cash 4-bets: a share of the 3-bettor's range, 40% of it bluffs, from the reference solver's NL10 button facing a BB 3-bet (15% of its range). */
-export const CASH_FOUR_BET_WIDTH_RATIO = 0.48;
+export const CASH_FOUR_BET_WIDTH_RATIO = 0.85;
 export const CASH_FOUR_BET_BLUFF_SHARE = 0.4;
 /**
  * Blind against blind in cash, from the reference solver's NL10 (2026-11-04): the BB
@@ -121,13 +121,13 @@ export const CASH_FOUR_BET_BLUFF_SHARE = 0.4;
  * less than against the BB's bigger one (29% either way, where the price rule
  * alone keeps more against the cheaper).
  */
-export const CASH_BB_VS_SB_CONTINUE_FACTOR = 1.33;
+export const CASH_BB_VS_SB_CONTINUE_FACTOR = 1.4;
 export const CASH_BB_VS_SB_THREE_BET_WIDTH_RATIO = 0.54;
-export const CASH_SB_FOUR_BET_WIDTH_RATIO = 0.55;
+export const CASH_SB_FOUR_BET_WIDTH_RATIO = 0.8;
 export const CASH_SB_FOUR_BET_BLUFF_SHARE = 0.3;
 export const CASH_SB_THREE_BET_KEEP_FACTOR = 0.83;
 /** Against a 3-bet made in position, wider: the public solver ranges' early seats 4-bet a button 3-bet 22–25% of the time (referenceRanges.test.ts). */
-export const CASH_FOUR_BET_VS_IN_POSITION_WIDTH_RATIO = 0.64;
+export const CASH_FOUR_BET_VS_IN_POSITION_WIDTH_RATIO = 1.0;
 
 // --- Facing-a-raise continuing threshold ----------------------------------
 export const BASE_CONTINUE_THRESHOLD = 0.3; // neutral continue %, before adjustment, facing a re-raise

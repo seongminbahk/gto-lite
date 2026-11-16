@@ -106,7 +106,24 @@ describe("cash 6-max against reference NL10", () => {
     ],
     ["button vs an SB 3-bet", [...toBtn, ...steps("BTN:raise", "SB:raise", "BB:fold")], toBtn, (h: HandFrequency) => h.raise, [16.3, 12.9, 70.8]],
     ["SB vs a BB 3-bet", [...toBtn, ...steps("BTN:fold", "SB:raise", "BB:raise")], [...toBtn, ...steps("BTN:fold")], (h: HandFrequency) => h.raise, [25.9, 9.4, 64.7]],
-  ])("%s, of the range that got there", (_, path, before, reach, want) => {
-    expectNear(ofRange(spot(path).hands, spot(before).hands, reach), want);
+    // Read 2026-11-16: a blind 3-bettor facing a 4-bet jams or folds.
+    [
+      "BB vs a cutoff 4-bet",
+      [...toCo, ...steps("CO:raise", "BTN:fold", "SB:fold", "BB:raise", "CO:raise")],
+      [...toCo, ...steps("CO:raise", "BTN:fold", "SB:fold")],
+      (h: HandFrequency) => h.raise,
+      [39.7, 0.2, 60.1],
+      6,
+    ],
+    [
+      "BB vs a button 4-bet",
+      [...toBtn, ...steps("BTN:raise", "SB:fold", "BB:raise", "BTN:raise")],
+      [...toBtn, ...steps("BTN:raise", "SB:fold")],
+      (h: HandFrequency) => h.raise,
+      [38.8, 0.5, 60.7],
+      6,
+    ],
+  ])("%s, of the range that got there", (_, path, before, reach, want, tolerance = TOLERANCE) => {
+    ofRange(spot(path).hands, spot(before).hands, reach).forEach((value, i) => expect(Math.abs(value - want[i])).toBeLessThanOrEqual(tolerance));
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadEquityMatrix } from "@/lib/equity/loadEquityMatrix";
-import { HAND_BY_LABEL } from "@/lib/handRange/handList";
+import { ALL_HANDS, HAND_BY_LABEL } from "@/lib/handRange/handList";
 import type { ActionType, HandFrequency, Position } from "@/types/rangeData";
 import { computeAvailableActions, computeRawRaiseTo } from "./actionSizing";
 import { GAME_FORMATS, TOURNAMENT_8, firstInWidthsUnder, gameFormatById, type GameFormat } from "./gameFormat";
@@ -202,7 +202,7 @@ describe("multiway", () => {
     expect(computeRawRaiseTo("BB", tournament.potState, 100)).toBe(computeRawRaiseTo("BB", facing(TOURNAMENT_8, "UTG:raise", "UTG1:fold", "LJ:fold", "HJ:fold", "CO:fold", "BTN:fold", "SB:fold").potState, 100));
   });
 
-  it("overcalls less behind a caller in position than one out of position, without touching the 3-bets", () => {
+  it("overcalls less behind a caller in position than one out of position, barely touching the 3-bets", () => {
     const flats = (...moves: string[]) => {
       const state = facing(CASH_6, ...moves);
       const hands = solveActiveSeat(matrix, "BB", state.potState, 100, DEFAULT_RAKE_SETTINGS).hands;
@@ -214,7 +214,10 @@ describe("multiway", () => {
     const coOpen = flats("LJ:fold", "HJ:fold", "CO:raise", "BTN:fold", "SB:fold");
     const behindBtn = flats("LJ:fold", "HJ:fold", "CO:raise", "BTN:call", "SB:fold");
     expect(behindBtn.call / coOpen.call).toBeLessThan(behindSb.call / headsUp.call);
-    expect(behindBtn.raise).toEqual(coOpen.raise);
+    // The value 3-bets stay; the bluffs, a slice of the hands that continue, move a little with the price.
+    coOpen.raise.forEach((r, i) => r === 1 && expect(behindBtn.raise[i]).toBe(1));
+    const total = (raise: number[]) => raise.reduce((s, r, i) => s + r * ALL_HANDS[i].combos, 0);
+    expect(Math.abs(total(behindBtn.raise) - total(coOpen.raise))).toBeLessThan(0.1 * total(coOpen.raise));
   });
 
   it.each([["cash", CASH_8], ["tournament", TOURNAMENT_8]] as const)("leaves a %s cold caller facing a squeeze some calls", (_, format) => {

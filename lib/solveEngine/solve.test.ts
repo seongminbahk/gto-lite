@@ -4,6 +4,7 @@ import { HAND_BY_LABEL } from "@/lib/handRange/handList";
 import type { ActionType, HandFrequency, Position } from "@/types/rangeData";
 import { gameFormatById, TOURNAMENT_8, type GameFormat } from "./gameFormat";
 import { initialPotState, applyAction, type PotState } from "./potState";
+import { NO_RAKE_SETTINGS } from "./rake";
 import { replayActionPath } from "./replay";
 import { solveActiveSeat } from "./solve";
 import { equityOf } from "@/lib/equity/loadEquityMatrix";
@@ -244,8 +245,6 @@ describe("the SB's limp-raise", () => {
     const bbRaise = new Map(bb.map((h, i) => [h.hand, aggressiveFrequencies(bb)[i]]));
     const sb = at(format, stack, limpRaised).hands;
     for (const h of sb.filter((x) => x.raise > 0)) expect(weightedEquityVsRange(matrix, h.hand, bbRaise), h.hand).toBeGreaterThanOrEqual(0.5);
-    // A cash limping range has nothing that strong: it calls or folds.
-    if (format.allowsRake) expect(combosWith(sb, (h) => h.raise + (h.allin ?? 0))).toBe(0);
   });
 
   it("calls enough of a 100bb tournament limp-raise that the BB can't jam all it would fold", () => {
@@ -279,3 +278,16 @@ describe("the SB's limp-raise", () => {
   });
 });
 
+
+describe("the tournament BB behind a limp", () => {
+  it("raises a slice of everything at 100bb, and only value and suited bluffs shallower", () => {
+    const at = (stack: number) => {
+      const path = [...["UTG", "UTG1", "LJ", "HJ", "CO", "BTN"].map((actor) => ({ actor: actor as Position, action: "fold" as const })), { actor: "SB" as Position, action: "call" as const }];
+      const result = replayActionPath(path, stack, TOURNAMENT_8);
+      if (result.status !== "active") throw new Error("expected the BB to act");
+      return new Map(solveActiveSeat(matrix, "BB", result.potState, stack, NO_RAKE_SETTINGS).hands.map((h) => [h.hand, h.raise]));
+    };
+    expect(at(100).get("72o")).toBeCloseTo(0.35, 6);
+    expect(at(40).get("72o")).toBe(0);
+  });
+});

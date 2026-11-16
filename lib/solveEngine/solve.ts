@@ -237,7 +237,10 @@ function solveShoveSpot(ctx: SpotContext): SolvedNode {
 function solveFirstIn(ctx: SpotContext): SolvedNode {
   const { activeSeat, effectiveStackBb, format, firstInWidths } = ctx;
   const ranking = getPlayabilityRanking(ctx.matrix, ctx.format.playabilityByStack ? ctx.effectiveStackBb : undefined);
-  if (activeSeat === "BB") return { source: "heuristic-approx", hands: generateBbVsLimpScenario(ranking) };
+  if (activeSeat === "BB") {
+    const mix = format.bbVsLimpMix && effectiveStackBb >= (format.bbVsLimpMix.minStackBb ?? 0) ? format.bbVsLimpMix : undefined;
+    return { source: "heuristic-approx", hands: generateBbVsLimpScenario(ranking, mix) };
+  }
   if (activeSeat === "SB" && format.sbCanLimp) {
     return { source: "heuristic-approx", hands: generateSbFirstInScenario(ranking, effectiveStackBb, firstInWidths, format.sbRaiseSpread) };
   }
@@ -266,7 +269,13 @@ function solveFacingRaise(ctx: FacingRaiseContext): SolvedNode {
   const hands = handsFacingRaise(ctx)
     ? generateVsReraiseScenario(ctx.matrix, ranking, vsReraiseParams(ctx, ctx.heroRange, ctx.villainRange))
     : generateFacingRaiseScenario(ranking, facingRaiseParams(ctx));
-  return { source: "heuristic-approx", hands: reraisesAllIn(ctx) ? jamReraises(hands) : hands };
+  const answered = blindJamsOrFolds(ctx) ? hands.map((h) => ({ ...h, fold: h.fold + h.call, call: 0 })) : hands;
+  return { source: "heuristic-approx", hands: reraisesAllIn(ctx) ? jamReraises(answered) : answered };
+}
+
+/** A blind whose 3-bet met a 4-bet, out of position with little behind for a flop: 5-bets or folds (GameFormat.blindFacingFourBetCalls). */
+function blindJamsOrFolds(ctx: FacingRaiseContext): boolean {
+  return ctx.format.blindFacingFourBetCalls === false && ctx.isBlind && !ctx.isIP && ctx.potState.raiseDepth >= 3;
 }
 
 /** A re-raise that would put in most of a stack is made all-in instead. */
@@ -401,5 +410,7 @@ function facingRaiseParams(ctx: FacingRaiseContext): FacingRaiseParams {
     continueFactor: Math.exp(-RAKE_CONTINUE_FALLOFF * rakeShare(ctx.rake.structure)),
     callFactor: flatCallFactor(ctx),
     bubbleFactor: partialRiskBubbleFactor(ctx),
+    blindBluffMaxShare: ctx.isBlind ? format.blindBluffMaxShare : undefined,
+    blindSuitedBluffShare: activeSeat === "SB" ? format.sbSuitedBluffShare : undefined,
   };
 }
