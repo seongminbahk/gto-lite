@@ -89,7 +89,7 @@ const en: AboutContent = {
       id: "privacy",
       heading: "Privacy",
       paragraphs: [
-        "There are no accounts. Your settings and language stay in your browser. Preflop requests carry only the game settings and the actions; postflop solving happens on your device. Visits are counted without cookies. The AI explanation's daily limit uses a random ID cookie and a scrambled form of your IP address.",
+        "There are no accounts. Your settings and language stay in your browser. Preflop requests carry only the game settings and the actions; postflop solving happens on your device. Visits are counted without cookies. When you ask for an AI explanation, that hand's solver numbers (the game settings, the actions played and the range statistics) are sent to Anthropic's Claude API to write it; nothing that identifies you goes with them. Its daily limit uses a random ID cookie and a scrambled form of your IP address.",
       ],
     },
     {
@@ -173,7 +173,7 @@ const ko: AboutContent = {
       id: "privacy",
       heading: "개인정보",
       paragraphs: [
-        "계정이 없습니다. 설정과 언어는 브라우저에만 저장됩니다. 프리플랍 요청에는 게임 설정과 액션만 담기고, 포스트플랍 계산은 사용자의 기기에서 이뤄집니다. 방문 수는 쿠키 없이 집계합니다. AI 설명의 하루 한도에는 무작위 ID 쿠키와, 알아볼 수 없게 변환한 IP 주소를 씁니다.",
+        "계정이 없습니다. 설정과 언어는 브라우저에만 저장됩니다. 프리플랍 요청에는 게임 설정과 액션만 담기고, 포스트플랍 계산은 사용자의 기기에서 이뤄집니다. 방문 수는 쿠키 없이 집계합니다. AI 설명을 요청하면 그 핸드의 솔버 수치(게임 설정, 진행한 액션, 레인지 통계)가 설명을 쓰기 위해 Anthropic의 Claude API로 전송됩니다. 사용자를 알아볼 수 있는 정보는 함께 보내지 않습니다. 하루 한도에는 무작위 ID 쿠키와, 알아볼 수 없게 변환한 IP 주소를 씁니다.",
       ],
     },
     {
