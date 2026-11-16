@@ -126,9 +126,10 @@ describe("solveActiveSeat", () => {
     expect(hands.find((h) => h.hand === "AA")!.fold).toBe(0);
     expect(hands.find((h) => h.hand === "72o")!.fold).toBe(1);
     const kept = combosWith(hands, (h) => 1 - h.fold) / combosWith(limps, (h) => h.call);
-    // A 2.5bb raise into 6bb is cheap, and the limps now hold some strong hands too.
+    // A 2.5bb raise into 6bb is cheap, the limps now hold some strong hands too, and
+    // a 40bb BB raises a slice of every hand over a limp: most of the limps go on.
     expect(kept).toBeGreaterThan(0.3);
-    expect(kept).toBeLessThan(0.9);
+    expect(kept).toBeLessThan(0.95);
   });
 
   it("produces call+raise summing correctly with fold for a deep-stack facing-raise spot", () => {
@@ -280,7 +281,7 @@ describe("the SB's limp-raise", () => {
 
 
 describe("the tournament BB behind a limp", () => {
-  it("raises a slice of everything at 100bb, and only value and suited bluffs shallower", () => {
+  it("raises a slice of everything from 15bb deep", () => {
     const at = (stack: number) => {
       const path = [...["UTG", "UTG1", "LJ", "HJ", "CO", "BTN"].map((actor) => ({ actor: actor as Position, action: "fold" as const })), { actor: "SB" as Position, action: "call" as const }];
       const result = replayActionPath(path, stack, TOURNAMENT_8);
@@ -288,6 +289,7 @@ describe("the tournament BB behind a limp", () => {
       return new Map(solveActiveSeat(matrix, "BB", result.potState, stack, NO_RAKE_SETTINGS).hands.map((h) => [h.hand, h.raise]));
     };
     expect(at(100).get("72o")).toBeCloseTo(0.35, 6);
-    expect(at(40).get("72o")).toBe(0);
+    expect(at(40).get("72o")).toBeCloseTo(0.35, 6);
+    expect(at(20).get("72o")).toBeCloseTo(0.35, 6);
   });
 });
