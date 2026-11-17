@@ -4,7 +4,7 @@ import { HAND_BY_LABEL } from "@/lib/handRange/handList";
 import type { ActionType, HandFrequency, Position } from "@/types/rangeData";
 import { gameFormatById, TOURNAMENT_8, type GameFormat } from "./gameFormat";
 import { initialPotState, applyAction, type PotState } from "./potState";
-import { NO_RAKE_SETTINGS } from "./rake";
+import { DEFAULT_RAKE_SETTINGS, NO_RAKE_SETTINGS } from "./rake";
 import { replayActionPath } from "./replay";
 import { solveActiveSeat } from "./solve";
 import { equityOf } from "@/lib/equity/loadEquityMatrix";
@@ -26,6 +26,18 @@ describe("solveActiveSeat", () => {
     expect(jams).toBeGreaterThan(0);
     expect(jams).toBeLessThan(raises / 3);
     expect((raises + jams) / 1326).toBeCloseTo(0.42, 1);
+  });
+
+  it("defends the raked cash BB against a button open with suited connectors before offsuit hands the open dominates", () => {
+    const format = gameFormatById("cash-6")!;
+    const path = (["LJ", "HJ", "CO"] as Position[]).map((actor) => ({ actor, action: "fold" as ActionType }));
+    const replayed = replayActionPath([...path, { actor: "BTN", action: "raise" }, { actor: "SB", action: "fold" }], 100, format);
+    if (replayed.status !== "active") throw new Error("BB should act");
+    const hands = new Map(solveActiveSeat(matrix, replayed.activeSeat, replayed.potState, 100, DEFAULT_RAKE_SETTINGS).hands.map((h) => [h.hand, h]));
+    const played = (hand: string) => 1 - hands.get(hand)!.fold;
+    const sum = (list: string[]) => list.reduce((total, hand) => total + played(hand), 0);
+    for (const suited of ["65s", "75s", "86s"]) expect(played(suited)).toBeGreaterThan(0.9);
+    expect(sum(["J9o", "Q9o", "T9o"])).toBeLessThan(sum(["65s", "75s", "86s"]) - 1);
   });
 
   it("defends the BB against a button open with most of its hands, far more than the seats that don't close the action", () => {

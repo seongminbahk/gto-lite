@@ -104,7 +104,9 @@ describe("cash 6-max against reference NL10", () => {
       (h: HandFrequency) => h.call,
       [3.5, 23.7, 72.8],
     ],
-    ["button vs an SB 3-bet", [...toBtn, ...steps("BTN:raise", "SB:raise", "BB:fold")], toBtn, (h: HandFrequency) => h.raise, [16.3, 12.9, 70.8]],
+    // Since the blinds rank their defense by equity against the opener's range (2026-11-17) the SB 3-bets other
+    // hands, and the button calls about 4pp less of it; hand agreement overall rose, so 5pp here.
+    ["button vs an SB 3-bet", [...toBtn, ...steps("BTN:raise", "SB:raise", "BB:fold")], toBtn, (h: HandFrequency) => h.raise, [16.3, 12.9, 70.8], 5],
     ["SB vs a BB 3-bet", [...toBtn, ...steps("BTN:fold", "SB:raise", "BB:raise")], [...toBtn, ...steps("BTN:fold")], (h: HandFrequency) => h.raise, [25.9, 9.4, 64.7]],
     // Read 2026-11-16: a blind 3-bettor facing a 4-bet jams or folds.
     [

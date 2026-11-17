@@ -255,7 +255,19 @@ function solveFirstIn(ctx: SpotContext): SolvedNode {
   };
 }
 
-/** Facing an open, a seat that isn't a blind ranks its hands partly by their equity against the opener's range. */
+/**
+ * A blind facing an open ranks its hands by their equity against the opener's
+ * range alone, plus playability: it closes the action at a good price, so what
+ * counts is how a hand fares against what was opened. Against a random hand
+ * J9o and A4o outrank 65s and 86s, and the blind flatted the offsuit hands and
+ * folded the suited ones; a commercial solver (read 2026-11-17) does the
+ * reverse. Hand agreement rose in every format read, 0.3–1.7pp: cash 6-max
+ * 88.3→89.2%, 8-max 85.7→87.0%, MTT 100bb 88.9→90.2%, 20bb 86.0→87.7%,
+ * near-bubble 40bb 86.3→87.3%.
+ */
+const BLIND_DEFENSE_RANGE_EQUITY_WEIGHT = 1;
+
+/** Facing an open, a seat ranks its hands partly by their equity against the opener's range. */
 function facingRaiseRanking(ctx: FacingRaiseContext): Map<string, number> {
   const stack = ctx.format.playabilityByStack ? ctx.effectiveStackBb : undefined;
   const weight = ctx.format.coldCallRangeEquityWeight ?? 0;
@@ -264,6 +276,9 @@ function facingRaiseRanking(ctx: FacingRaiseContext): Map<string, number> {
   const reraiseWeight = ctx.format.reraiseRangeEquityWeight ?? 0;
   if (ctx.potState.raiseDepth >= 2 && reraiseWeight > 0 && hasVillainRange) {
     return getRangePlayabilityRanking(ctx.matrix, ctx.villainRange!, reraiseWeight, stack);
+  }
+  if (ctx.isBlind && ctx.potState.raiseDepth === 1 && !ctx.ownDecision && hasVillainRange) {
+    return getRangePlayabilityRanking(ctx.matrix, ctx.villainRange!, BLIND_DEFENSE_RANGE_EQUITY_WEIGHT, stack);
   }
   if (weight === 0 || !coldCall || !hasVillainRange) return getPlayabilityRanking(ctx.matrix, stack);
   return getRangePlayabilityRanking(ctx.matrix, ctx.villainRange!, weight, stack);
