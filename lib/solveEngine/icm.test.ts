@@ -93,6 +93,18 @@ describe("solveActiveSeat under ICM", () => {
     expect(raised(solveAt(btnFacingOpen, 40, "near-bubble").hands)).toBeCloseTo(raised(solveAt(btnFacingOpen, 40, "chip-ev").hands), -1);
   });
 
+  it("raises from the SB about 1/bubble factor as much, limping the rest, and defends that raise as in chips", () => {
+    const raised = (hands: HandFrequency[]) => hands.reduce((sum, h, i) => sum + (h.raise + (h.allin ?? 0)) * ALL_HANDS[i].combos, 0) / TOTAL_COMBOS;
+    const foldedToSb: [Position, ActionType][] = [...FOLDED_TO_BTN, ["BTN", "fold"]];
+    const icm = solveAt(foldedToSb, 40, "near-bubble").hands;
+    const chips = solveAt(foldedToSb, 40, "chip-ev").hands;
+    expect(raised(icm)).toBeLessThan(raised(chips) * 0.85);
+    expect(played(icm)).toBeCloseTo(played(chips), 2);
+    const facingThreeBet: [Position, ActionType][] = [...foldedToSb, ["SB", "raise"], ["BB", "raise"]];
+    const continued = (id: string) => played(solveAt(facingThreeBet, 40, id).hands);
+    expect(continued("near-bubble")).toBeGreaterThan(continued("chip-ev") * 0.6);
+  });
+
   it("prices a call harder the less of the stack stays behind it", () => {
     const facingOpen: [Position, ActionType][] = [...FOLDED_TO_BTN, ["BTN", "raise"], ["SB", "fold"]];
     const facingThreeBet: [Position, ActionType][] = [...facingOpen, ["BB", "raise"]];

@@ -244,7 +244,10 @@ function solveFirstIn(ctx: SpotContext): SolvedNode {
     return { source: "heuristic-approx", hands: generateBbVsLimpScenario(ranking, mix) };
   }
   if (activeSeat === "SB" && format.sbCanLimp) {
-    return { source: "heuristic-approx", hands: generateSbFirstInScenario(ranking, effectiveStackBb, firstInWidths, format.sbRaiseSpread) };
+    // Under ICM the SB raises about 1/bubble factor as much and limps the rest
+    // (a commercial solver's 40bb near bubble and 10%-left trees, read 2026-11-17).
+    const anchors = ctx.allInBubbleFactor > 1 ? firstInWidths.map((a) => ({ ...a, sbRaise: a.sbRaise! / ctx.allInBubbleFactor })) : firstInWidths;
+    return { source: "heuristic-approx", hands: generateSbFirstInScenario(ranking, effectiveStackBb, anchors, format.sbRaiseSpread) };
   }
   return {
     source: "heuristic-approx",
@@ -298,12 +301,14 @@ function facingSqueeze(ctx: FacingRaiseContext): boolean {
 
 /** The 4-bet width and bluff share against this 3-bet. */
 function fourBetTuning(ctx: FacingRaiseContext): { widthRatio: number; bluffShare: number } {
-  const { format, potState, activeSeat } = ctx;
+  const { format, potState } = ctx;
   // A 3-bet made in position on an opener that isn't a blind.
   const facingThreeBetInPosition = potState.raiseDepth === 2 && !ctx.isIP && !ctx.isBlind && !ctx.calledLast;
-  const sbFacingBbThreeBet =
-    potState.raiseDepth === 2 && activeSeat === "SB" && ctx.lastAggressor === "BB" && ctx.ownDecision?.action === "raise";
-  return (facingThreeBetInPosition && format.fourBet.vsInPosition) || (sbFacingBbThreeBet && format.fourBet.sbVsBb) || format.fourBet;
+  return (facingThreeBetInPosition && format.fourBet.vsInPosition) || (sbFacingBbThreeBet(ctx) && format.fourBet.sbVsBb) || format.fourBet;
+}
+
+function sbFacingBbThreeBet(ctx: FacingRaiseContext): boolean {
+  return ctx.potState.raiseDepth === 2 && ctx.activeSeat === "SB" && ctx.lastAggressor === "BB" && ctx.ownDecision?.action === "raise";
 }
 
 /** The share of a plain 3-bet's continuing range kept here: less against a squeeze, and in the SB's own 3-bet spots. */
@@ -326,7 +331,9 @@ function vsReraiseParams(ctx: FacingRaiseContext, heroRange: FrequencyMap, villa
     isIP: ctx.isIP,
     potBb: potState.potBb,
     amountOwedBb: ctx.amountOwedBb,
-    bubbleFactor: partialRiskBubbleFactor(ctx),
+    // The SB's ICM raise range is already narrow, so against the BB's 3-bet it
+    // continues about as it would in chips (same solver, 40bb near bubble).
+    bubbleFactor: sbFacingBbThreeBet(ctx) ? 1 : partialRiskBubbleFactor(ctx),
   };
   if (potState.raiseDepth < 2) {
     // A limper raised over: the 4-bet tuning doesn't apply, and nothing was compared here.
