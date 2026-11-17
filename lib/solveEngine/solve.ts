@@ -386,6 +386,12 @@ function flatCallFactor(ctx: FacingRaiseContext): number {
   );
 }
 
+/**
+ * Under ICM a blind 3-bets about 1/bubble factor as wide as in chip EV: a
+ * commercial solver's 8-max near-bubble 20bb and 40bb (read 2026-11-17) cut
+ * blind 3-bets to 0.58–0.69 of its chip-EV ones at a bubble factor of about
+ * 1.6, while seats with players behind barely changed theirs.
+ */
 function facingRaiseParams(ctx: FacingRaiseContext): FacingRaiseParams {
   const { format, potState, activeSeat, lastAggressor, effectiveStackBb, firstInWidths } = ctx;
   // BB's raise over a limp leaves SB closing the action, though BB sits "behind" it.
@@ -403,7 +409,7 @@ function facingRaiseParams(ctx: FacingRaiseContext): FacingRaiseParams {
     coldCallIpFactor: format.coldCallIpFactor,
     seatsBehind,
     coldCallPerSeatBehind: ctx.isBlind ? undefined : format.coldCallPerSeatBehind,
-    threeBetWidthRatio: threeBetWidthRatioFor(ctx, blindVsBlind),
+    threeBetWidthRatio: threeBetWidthRatioFor(ctx, blindVsBlind) / (ctx.isBlind ? ctx.allInBubbleFactor : 1),
     coldCallBase: format.coldCallBase,
     coldCallOopMultiplier: format.coldCallOopMultiplier,
     closingContinueFactor: format.closingContinueFactor * (blindVsBlind?.continueFactor ?? 1),

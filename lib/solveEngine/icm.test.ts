@@ -84,6 +84,15 @@ describe("solveActiveSeat under ICM", () => {
     expect(solveAt(FOLDED_TO_BTN, 40, "bubble").hands).toEqual(solveAt(FOLDED_TO_BTN, 40, "chip-ev").hands);
   });
 
+  it("3-bets from the big blind about 1/bubble factor as wide, and cold 3-bets the same", () => {
+    const raised = (hands: HandFrequency[]) => hands.reduce((sum, h, i) => sum + (h.raise + (h.allin ?? 0)) * ALL_HANDS[i].combos, 0);
+    const bbFacingOpen: [Position, ActionType][] = [...FOLDED_TO_BTN, ["BTN", "raise"], ["SB", "fold"]];
+    const ratio = raised(solveAt(bbFacingOpen, 40, "near-bubble").hands) / raised(solveAt(bbFacingOpen, 40, "chip-ev").hands);
+    expect(ratio).toBeCloseTo(1 / equalStackBubbleFactor(icmById("near-bubble")!, 8, 40, 40), 1);
+    const btnFacingOpen: [Position, ActionType][] = [["UTG", "fold"], ["UTG1", "fold"], ["LJ", "fold"], ["HJ", "fold"], ["CO", "raise"]];
+    expect(raised(solveAt(btnFacingOpen, 40, "near-bubble").hands)).toBeCloseTo(raised(solveAt(btnFacingOpen, 40, "chip-ev").hands), -1);
+  });
+
   it("prices a call harder the less of the stack stays behind it", () => {
     const facingOpen: [Position, ActionType][] = [...FOLDED_TO_BTN, ["BTN", "raise"], ["SB", "fold"]];
     const facingThreeBet: [Position, ActionType][] = [...facingOpen, ["BB", "raise"]];
