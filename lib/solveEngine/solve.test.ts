@@ -40,6 +40,23 @@ describe("solveActiveSeat", () => {
     expect(sum(["J9o", "Q9o", "T9o"])).toBeLessThan(sum(["65s", "75s", "86s"]) - 1);
   });
 
+  it("in cash 6-max, has the BB flat some middle pairs against a button open and the button flat more of the 3-bet than 8-max does", () => {
+    const at = (formatId: string, ...moves: string[]) => {
+      const format = gameFormatById(formatId)!;
+      const folds = (format.absentSeats?.includes("UTG") ? ["LJ", "HJ", "CO"] : ["UTG", "UTG1", "LJ", "HJ", "CO"]).map((actor) => ({ actor: actor as Position, action: "fold" as ActionType }));
+      const path = [...folds, ...moves.map((m) => { const [actor, action] = m.split(":"); return { actor: actor as Position, action: action as ActionType }; })];
+      const result = replayActionPath(path, 100, format);
+      if (result.status !== "active") throw new Error("expected a seat to act");
+      return new Map(solveActiveSeat(matrix, result.activeSeat, result.potState, 100, DEFAULT_RAKE_SETTINGS).hands.map((h) => [h.hand, h]));
+    };
+    const bb6 = at("cash-6", "BTN:raise", "SB:fold");
+    expect(bb6.get("88")!.call).toBeGreaterThan(0.5);
+    expect(bb6.get("AA")!.raise).toBe(1);
+    const btn6 = at("cash-6", "BTN:raise", "SB:fold", "BB:raise");
+    const btn8 = at("cash-8", "BTN:raise", "SB:fold", "BB:raise");
+    for (const hand of ["99", "88", "TT"]) expect(btn6.get(hand)!.call).toBeGreaterThan(btn8.get(hand)!.call);
+  });
+
   it("defends the BB against a button open with most of its hands, far more than the seats that don't close the action", () => {
     const state = (...seats: Position[]) =>
       seats.reduce(

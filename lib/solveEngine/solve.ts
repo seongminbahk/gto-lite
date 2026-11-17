@@ -387,7 +387,7 @@ function vsReraiseParams(ctx: FacingRaiseContext, heroRange: FrequencyMap, villa
   const fourBet = potState.raiseDepth >= 3 && fiveBet ? fiveBet : fourBetTuning(ctx);
   return {
     ...common,
-    raiseWidth: villainShare * fourBet.widthRatio * format.fourBet.valueShare * Math.max(0, 1 - RAKE_RELIEF_RERAISE_CUT * calledPotRakeRelief(ctx)),
+    raiseWidth: villainShare * fourBet.widthRatio * fourBetValueShare(ctx) * Math.max(0, 1 - RAKE_RELIEF_RERAISE_CUT * calledPotRakeRelief(ctx)),
     // A flatting range is capped: it has nothing to spare for bluffs.
     bluffWidth: calledLast ? 0 : villainShare * fourBet.widthRatio * fourBet.bluffShare,
     keepBase: potState.raiseDepth >= 3 ? (format.facingFourBetKeepBase ?? format.reraiseKeepBase) : format.reraiseKeepBase,
@@ -397,6 +397,13 @@ function vsReraiseParams(ctx: FacingRaiseContext, heroRange: FrequencyMap, villa
     ...(calledLast ? { maxRaiseShareOfKept: format.calledReraiseShareCap } : { valueInDeckCombos: true }),
     rake: ctx.rake.structure,
   };
+}
+
+/** The value share of a 4-bet: its own against a blind's heads-up 3-bet. */
+function fourBetValueShare(ctx: FacingRaiseContext): number {
+  const { format, potState, lastAggressor } = ctx;
+  const vsBlind = potState.raiseDepth === 2 && !ctx.isBlind && (lastAggressor === "SB" || lastAggressor === "BB") && !facingSqueeze(ctx);
+  return (vsBlind && format.fourBet.vsBlindValueShare) || format.fourBet.valueShare;
 }
 
 /** A cash game raked more lightly than the default; tournaments have no rake to be lighter than. */
@@ -476,7 +483,7 @@ function facingRaiseParams(ctx: FacingRaiseContext): FacingRaiseParams {
     coldCallBase: format.coldCallBase,
     coldCallOopMultiplier: format.coldCallOopMultiplier,
     closingContinueFactor: format.closingContinueFactor * (blindVsBlind?.continueFactor ?? 1),
-    threeBetValueShare: format.threeBetValueShare,
+    threeBetValueShare: (ctx.isBlind && format.blindThreeBetValueShare) || format.threeBetValueShare,
     threeBetMix: ctx.isBlind ? undefined : format.coldCallThreeBetMix,
     continueFactor: rakeContinueFactor(ctx),
     callFactor: flatCallFactor(ctx),

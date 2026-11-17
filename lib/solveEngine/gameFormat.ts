@@ -286,11 +286,15 @@ export interface GameFormat {
     vsInPosition?: { widthRatio: number; bluffShare: number };
     /** The SB 4-betting the BB's 3-bet over its own raise. Default: as against any other 3-bet. */
     sbVsBb?: { widthRatio: number; bluffShare: number };
+    /** The value share of an opener's 4-bet against a blind's heads-up 3-bet (not a squeeze). Default valueShare. */
+    vsBlindValueShare?: number;
   };
   /** The BB against the SB's first-in raise: its continuing range scaled, and its 3-bet width. Default: as against any opener. */
   blindVsBlind?: { continueFactor: number; threeBetWidthRatio: number };
   /** An opener facing the SB's 3-bet keeps this share of what it keeps against another; default 1. */
   sbThreeBetKeepFactor?: number;
+  /** The value share of a blind's 3-bet against an open. Default threeBetValueShare. */
+  blindThreeBetValueShare?: number;
   /** A blind against an open 3-bets offsuit and low-kicker bluffs, up to this share of each (FacingRaiseParams.blindBluffMaxShare). */
   blindBluffMaxShare?: number;
   /** The BB behind a limp raises its top `valueWidth` and `slice` of every other hand (generateBbVsLimpScenario), from `minStackBb` deep. Unset: value and suited bluffs. */
@@ -469,6 +473,14 @@ const CASH_6: GameFormat = {
   facingFourBetKeepBase: 0.4,
   fiveBet: { widthRatio: 1.1, bluffShare: 0, blindWidthRatio: 2.5 },
   blindFacingFourBetCalls: false,
+  // In the same tree a blind 3-bets a more polar range, flatting 88–99 and
+  // AJs–A9s, and the opener 4-bets it with fewer value hands, flatting 99–77
+  // and the suited broadways. On 19 flops of BTN against a BB 3-bet (read
+  // 2026-11-17), with our own ranges, the BB's c-bet frequency gap fell
+  // 33.0→27.0pp and hand agreement rose 64.2→68.6%; single-raised flops went
+  // 80.8→82.8%, preflop 89.2→89.3%.
+  blindThreeBetValueShare: 0.45,
+  fourBet: { ...CASH_8.fourBet, vsBlindValueShare: 0.45 },
 };
 
 export const GAME_FORMATS: GameFormat[] = [TOURNAMENT_8, CASH_6, CASH_8];
