@@ -55,6 +55,15 @@ export function rakeShare(rake: RakeTerms): number {
   return TYPICAL_POTS_BB.reduce((sum, pot) => sum + rakeForPot(pot, rake) / pot, 0) / TYPICAL_POTS_BB.length;
 }
 
+/**
+ * How much less of a pot of this size `rake` takes than the default online-low
+ * rake does, never below 0.
+ */
+export function rakeReliefAt(potBb: number, rake: RakeTerms): number {
+  const share = (terms: RakeTerms) => rakeForPot(potBb, terms) / potBb;
+  return Math.max(0, share(ONLINE_LOW) - share(rake));
+}
+
 /** "5%/3bb", or the label when there is no rake to state. */
 export function rakeSummary(rake: RakeStructure): string {
   return rake.rate === 0 ? rake.label : `${Math.round(rake.rate * 100)}%/${rake.capBb}bb`;

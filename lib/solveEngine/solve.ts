@@ -10,14 +10,25 @@ import {
   openWidthFor,
   type FacingRaiseParams,
 } from "@/lib/heuristicRanges/generateScenario";
-import { ICM_RISK_SPR_EXPONENT, LIMP_RERAISE_MIN_EQUITY, RAISE_VALUE_SHARE, RAKE_CONTINUE_FALLOFF, RERAISE_KEEP_BASE } from "@/lib/heuristicRanges/config";
+import {
+  ICM_RISK_SPR_EXPONENT,
+  LIMP_RERAISE_MIN_EQUITY,
+  RAISE_VALUE_SHARE,
+  RAKE_CONTINUE_FALLOFF,
+  RAKE_RELIEF_CONTINUE_GAIN,
+  RAKE_RELIEF_POT_GROWTH,
+  RAKE_RELIEF_RERAISE_CUT,
+  RAKE_RELIEF_SB_PLAY_GAIN,
+  RAKE_RELIEF_SB_RAISE_CUT,
+  RERAISE_KEEP_BASE,
+} from "@/lib/heuristicRanges/config";
 import { generateCallShoveScenario, generateVsReraiseScenario, type JamDefense, type VsReraiseParams } from "@/lib/heuristicRanges/vsReraise";
 import type { FrequencyMap } from "@/lib/nashSolver/pushFoldSolver";
 import { firstInWidthsUnder, tunedAt, type FirstInAnchor, type GameFormat } from "./gameFormat";
 import { computeRawRaiseTo } from "./actionSizing";
 import { aggressiveFrequencies } from "./postflopHandoff";
 import { callersOf, type PotState, type SeatDecision } from "./potState";
-import { NO_RAKE_SETTINGS, rakeShare, type RakeSettings } from "./rake";
+import { DEFAULT_RAKE_SETTINGS, NO_RAKE_SETTINGS, rakeReliefAt, rakeShare, type RakeSettings } from "./rake";
 import { shouldUseNash } from "./classify";
 import { BIG_BLIND_BB, SHORT_RERAISE_JAM_SHARE, SMALL_BLIND_BB } from "./constants";
 import { CHIP_EV, equalStackBubbleFactor, type IcmStructure } from "./icm";
@@ -246,7 +257,13 @@ function solveFirstIn(ctx: SpotContext): SolvedNode {
   if (activeSeat === "SB" && format.sbCanLimp) {
     // Under ICM the SB raises about 1/bubble factor as much and limps the rest
     // (a commercial solver's 40bb near bubble and 10%-left trees, read 2026-11-17).
-    const anchors = ctx.allInBubbleFactor > 1 ? firstInWidths.map((a) => ({ ...a, sbRaise: a.sbRaise! / ctx.allInBubbleFactor })) : firstInWidths;
+    // A limped pot is small, so only a rake lighter than the default on small pots (none at all) moves it.
+    const relief = lighterThanDefaultRake(ctx) ? rakeReliefAt(RAKE_RELIEF_POT_GROWTH * 2 * BIG_BLIND_BB, ctx.rake.structure) : 0;
+    const anchors = (ctx.allInBubbleFactor > 1 ? firstInWidths.map((a) => ({ ...a, sbRaise: a.sbRaise! / ctx.allInBubbleFactor })) : firstInWidths).map((a) => ({
+      ...a,
+      sbRaise: a.sbRaise! * Math.max(0, 1 - RAKE_RELIEF_SB_RAISE_CUT * relief),
+      sbPlay: a.sbPlay === undefined ? undefined : a.sbPlay * (1 + RAKE_RELIEF_SB_PLAY_GAIN * relief),
+    }));
     return { source: "heuristic-approx", hands: generateSbFirstInScenario(ranking, effectiveStackBb, anchors, format.sbRaiseSpread) };
   }
   return {
@@ -370,7 +387,7 @@ function vsReraiseParams(ctx: FacingRaiseContext, heroRange: FrequencyMap, villa
   const fourBet = potState.raiseDepth >= 3 && fiveBet ? fiveBet : fourBetTuning(ctx);
   return {
     ...common,
-    raiseWidth: villainShare * fourBet.widthRatio * format.fourBet.valueShare,
+    raiseWidth: villainShare * fourBet.widthRatio * format.fourBet.valueShare * Math.max(0, 1 - RAKE_RELIEF_RERAISE_CUT * calledPotRakeRelief(ctx)),
     // A flatting range is capped: it has nothing to spare for bluffs.
     bluffWidth: calledLast ? 0 : villainShare * fourBet.widthRatio * fourBet.bluffShare,
     keepBase: potState.raiseDepth >= 3 ? (format.facingFourBetKeepBase ?? format.reraiseKeepBase) : format.reraiseKeepBase,
@@ -380,6 +397,30 @@ function vsReraiseParams(ctx: FacingRaiseContext, heroRange: FrequencyMap, villa
     ...(calledLast ? { maxRaiseShareOfKept: format.calledReraiseShareCap } : { valueInDeckCombos: true }),
     rake: ctx.rake.structure,
   };
+}
+
+/** A cash game raked more lightly than the default; tournaments have no rake to be lighter than. */
+function lighterThanDefaultRake(ctx: SpotContext): boolean {
+  return !!ctx.format.allowsRake && rakeShare(ctx.rake.structure) < rakeShare(DEFAULT_RAKE_SETTINGS.structure);
+}
+
+/** How much lighter than the default the rake is on the pot this call is likely to grow into. */
+function calledPotRakeRelief(ctx: FacingRaiseContext): number {
+  if (!lighterThanDefaultRake(ctx)) return 0;
+  return rakeReliefAt(RAKE_RELIEF_POT_GROWTH * (ctx.potState.potBb + ctx.amountOwedBb), ctx.rake.structure);
+}
+
+/**
+ * The share of a flat kept under this rake. A rake at or above the default
+ * falls off with its share of a typical pot; a lighter one widens by how much
+ * less it takes of the pot this call grows into, so NL500's 1bb cap, which
+ * rakes a single-raised pot like NL10 does, leaves the BB's defense alone.
+ */
+function rakeContinueFactor(ctx: FacingRaiseContext): number {
+  const share = rakeShare(ctx.rake.structure);
+  const drawnAt = rakeShare(DEFAULT_RAKE_SETTINGS.structure);
+  if (!lighterThanDefaultRake(ctx)) return Math.exp(-RAKE_CONTINUE_FALLOFF * share);
+  return Math.exp(-RAKE_CONTINUE_FALLOFF * drawnAt + RAKE_RELIEF_CONTINUE_GAIN * calledPotRakeRelief(ctx));
 }
 
 /** The 3-bet width as a share of the opener's: the BB against the SB, the SB, other blinds, and seats that aren't blinds. */
@@ -437,7 +478,7 @@ function facingRaiseParams(ctx: FacingRaiseContext): FacingRaiseParams {
     closingContinueFactor: format.closingContinueFactor * (blindVsBlind?.continueFactor ?? 1),
     threeBetValueShare: format.threeBetValueShare,
     threeBetMix: ctx.isBlind ? undefined : format.coldCallThreeBetMix,
-    continueFactor: Math.exp(-RAKE_CONTINUE_FALLOFF * rakeShare(ctx.rake.structure)),
+    continueFactor: rakeContinueFactor(ctx),
     callFactor: flatCallFactor(ctx),
     bubbleFactor: partialRiskBubbleFactor(ctx),
     blindBluffMaxShare: ctx.isBlind ? format.blindBluffMaxShare : undefined,

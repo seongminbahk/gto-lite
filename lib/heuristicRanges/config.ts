@@ -31,6 +31,23 @@ export const CASH_FIRST_IN_WIDTHS = [{ stackBb: 100, widths: [0.12, 0.14, 0.17, 
 export const RAKE_OPEN_SENSITIVITY = 1.5;
 /** Flats keep exp(−RAKE_CONTINUE_FALLOFF × rakeShare) of their width: set so the BB defends a button open as the reference solver's NL10 does. */
 export const RAKE_CONTINUE_FALLOFF = 10.1;
+/*
+ * A rake lighter than the default is priced on the pot a call is likely to grow
+ * into, RAKE_RELIEF_POT_GROWTH times the pot once called, by how much less of it
+ * the rake takes (rakeReliefAt). Set against a commercial solver's cash 6-max
+ * 100bb at NL500 and with no rake (read 2026-11-17): there, flats widen, 4-bets
+ * and 5-bets narrow for calls, and the SB limps more and raises less with no
+ * rake. Hand agreement NL500 87.7→88.0%, no rake 84.5→86.0%, NL10 unchanged.
+ */
+export const RAKE_RELIEF_POT_GROWTH = 3;
+/** Flats widen by exp(gain × relief). */
+export const RAKE_RELIEF_CONTINUE_GAIN = 6.7;
+/** 4-bets and 5-bets for value narrow by 1 − cut × relief. */
+export const RAKE_RELIEF_RERAISE_CUT = 10;
+/** The SB's first-in raise narrows by 1 − cut × relief on a limped pot... */
+export const RAKE_RELIEF_SB_RAISE_CUT = 5;
+/** ...and the hands it plays widen by 1 + gain × relief. */
+export const RAKE_RELIEF_SB_PLAY_GAIN = 4;
 /**
  * Between the push/fold stacks and JAM_MAX_STACK_BB, a share of each first-in
  * raising range jams instead, growing as the stack shrinks and reaching

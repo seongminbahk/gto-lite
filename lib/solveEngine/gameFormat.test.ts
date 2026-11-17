@@ -122,8 +122,9 @@ describe("cash ranges", () => {
 
     const sb = solveActiveSeat(matrix, "SB", initialPotState(CASH_8), 100).hands;
     const share = (k: (h: HandFrequency) => number) => sb.reduce((sum, h) => sum + k(h) * HAND_BY_LABEL.get(h.hand)!.combos, 0) / 1326;
-    expect(share((h) => h.raise + (h.allin ?? 0))).toBeCloseTo(0.34, 1);
-    expect(share((h) => h.call)).toBeCloseTo(0.15, 1);
+    // With no rake the SB limps more and raises less (a commercial solver's 8-max cEV: raise 21%, limp 45%).
+    expect(share((h) => h.raise + (h.allin ?? 0))).toBeCloseTo(0.27, 1);
+    expect(share((h) => h.call)).toBeCloseTo(0.35, 1);
   });
 
   it("shares one LJ chart between 6-max and 8-max", () => {
@@ -177,6 +178,32 @@ describe("rake", () => {
     const share = (seat: Position, state: PotState, rake: RakeSettings) => playedShare(solveActiveSeat(matrix, seat, state, 10, rake).hands);
     expect(share("BB", facingShove.potState, preset("live"))).toBeLessThan(share("BB", facingShove.potState, NO_RAKE_SETTINGS));
     expect(share("BTN", initialPotState(CASH_8), preset("live"))).toBeGreaterThan(share("BTN", initialPotState(CASH_8), NO_RAKE_SETTINGS));
+  });
+
+  it("prices a lighter rake on the pot a call grows into", () => {
+    // NL500's 1bb cap rakes a single-raised pot as NL10 does, so the BB defends about the same; with no rake it defends wider.
+    const defends = (rake: RakeSettings) => playedShare(bbVsBtn(rake));
+    expect(Math.abs(defends(preset("online-high")) - defends(preset("online-low")))).toBeLessThan(0.02);
+    expect(defends(NO_RAKE_SETTINGS)).toBeGreaterThan(defends(preset("online-high")) + 0.08);
+
+    // In a 3-bet pot the cap bites: a lighter rake 4-bets less and calls more.
+    const facingThreeBet = path(CASH_6, ["LJ", "fold"], ["HJ", "fold"], ["CO", "fold"], ["BTN", "raise"], ["SB", "raise"], ["BB", "fold"]);
+    if (facingThreeBet.status !== "active") throw new Error("expected BTN to act");
+    const btn = (rake: RakeSettings) => {
+      const hands = solveActiveSeat(matrix, "BTN", facingThreeBet.potState, 100, rake).hands;
+      const sum = (k: (h: HandFrequency) => number) => hands.reduce((s, h) => s + k(h) * HAND_BY_LABEL.get(h.hand)!.combos, 0);
+      return { raise: sum((h) => h.raise + (h.allin ?? 0)), call: sum((h) => h.call) };
+    };
+    expect(btn(preset("online-high")).raise).toBeLessThan(btn(preset("online-low")).raise * 0.9);
+    expect(btn(NO_RAKE_SETTINGS).raise).toBeLessThan(btn(preset("online-high")).raise);
+    expect(btn(NO_RAKE_SETTINGS).call).toBeGreaterThan(btn(preset("online-low")).call);
+
+    // A limped pot is small: only no rake at all makes the SB limp more and raise less.
+    const foldedToSb = path(CASH_6, ["LJ", "fold"], ["HJ", "fold"], ["CO", "fold"], ["BTN", "fold"]);
+    if (foldedToSb.status !== "active") throw new Error("expected SB to act");
+    const sbRaise = (rake: RakeSettings) =>
+      solveActiveSeat(matrix, "SB", foldedToSb.potState, 100, rake).hands.reduce((s, h) => s + h.raise * HAND_BY_LABEL.get(h.hand)!.combos, 0);
+    expect(sbRaise(NO_RAKE_SETTINGS)).toBeLessThan(sbRaise(preset("online-high")) * 0.85);
   });
 
   it("leaves the tournament alone", () => {
