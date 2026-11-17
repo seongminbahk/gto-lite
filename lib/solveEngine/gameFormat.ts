@@ -450,12 +450,26 @@ const CASH_8: GameFormat = {
   reraiseRangeEquityWeight: 1,
   reraiseValueMixSpread: 0.2,
   reraiseBlockerBluffMaxShare: 0.1,
+  // A commercial solver's 8-max 100bb (no rake and live 10%, read 2026-11-17):
+  // a blind facing a 4-bet continues about two-thirds of its 3-bets, calling
+  // about as often as it 5-bets.
+  facingFourBetKeepBase: 0.55,
+  fiveBet: { widthRatio: 1.1, bluffShare: 0, blindWidthRatio: 1 },
+};
+
+/**
+ * The same solver's 6-max NL10 tree differs at the 4-bet: a blind facing one
+ * jams or folds, about 40% of its 3-bets jamming (read 2026-11-16).
+ */
+const CASH_6: GameFormat = {
+  ...CASH_8,
+  id: "cash-6",
+  label: "Cash 6-max",
+  absentSeats: ["UTG", "UTG1"],
   facingFourBetKeepBase: 0.4,
   fiveBet: { widthRatio: 1.1, bluffShare: 0, blindWidthRatio: 2.5 },
   blindFacingFourBetCalls: false,
 };
-
-const CASH_6: GameFormat = { ...CASH_8, id: "cash-6", label: "Cash 6-max", absentSeats: ["UTG", "UTG1"] };
 
 export const GAME_FORMATS: GameFormat[] = [TOURNAMENT_8, CASH_6, CASH_8];
 

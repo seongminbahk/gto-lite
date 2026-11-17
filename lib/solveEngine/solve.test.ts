@@ -222,6 +222,29 @@ describe("solveActiveSeat", () => {
       expect(called).toBeGreaterThan(0);
     });
 
+    it.each([
+      ["cash-8", true],
+      ["cash-6", false],
+    ] as const)("a %s BB facing a cutoff 4-bet calls some of its 3-bets: %s", (formatId, calls) => {
+      const line = replayActionPath(
+        ["UTG:fold", "UTG1:fold", "LJ:fold", "HJ:fold", "CO:raise", "BTN:fold", "SB:fold", "BB:raise", "CO:raise"]
+          .map((s) => {
+            const [actor, action] = s.split(":");
+            return { actor: actor as Position, action: action as ActionType };
+          })
+          .filter((p) => !gameFormatById(formatId)!.absentSeats.includes(p.actor)),
+        100,
+        gameFormatById(formatId)!,
+      );
+      if (line.status !== "active") throw new Error("expected BB to act");
+      const hands = solveActiveSeat(matrix, "BB", line.potState, 100).hands;
+      const called = combosWith(hands, (h) => h.call);
+      const raised = combosWith(hands, (h) => h.raise + (h.allin ?? 0));
+      expect(raised).toBeGreaterThan(0);
+      if (calls) expect(called).toBeGreaterThan(raised / 3);
+      else expect(called).toBe(0);
+    });
+
     it("keeps a seat that shoved at a call-only node in range", () => {
       const line = replayActionPath(
         ["UTG:raise", "UTG1:fold", "LJ:fold", "HJ:fold", "CO:fold", "BTN:raise", "SB:fold", "BB:fold", "UTG:raise", "BTN:allin"].map((s) => {
