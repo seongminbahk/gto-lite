@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { ErrorNotice, PRIMARY_ACTION, SECONDARY_ACTION } from "@/components/ErrorNotice";
-import { useMessages } from "@/lib/i18n/locale";
+import { useLocalePath, useMessages } from "@/lib/i18n/locale";
 
-export default function Error({ error, retry }: { error: unknown; retry: () => void }) {
+/** A page that failed, inside its layout: retry, or go back to the solver in the same language. */
+export default function RouteError({ error, retry }: { error: unknown; retry: () => void }) {
   const t = useMessages();
+  const home = useLocalePath("/");
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -16,7 +18,7 @@ export default function Error({ error, retry }: { error: unknown; retry: () => v
       <button type="button" onClick={() => retry()} className={PRIMARY_ACTION}>
         {t.common.retry}
       </button>
-      <Link href="/" className={SECONDARY_ACTION}>
+      <Link href={home} className={SECONDARY_ACTION}>
         {t.header.home}
       </Link>
     </ErrorNotice>

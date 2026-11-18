@@ -1,0 +1,16 @@
+import { describe, expect, it } from "vitest";
+import sitemap from "./sitemap";
+
+describe("sitemap", () => {
+  it("lists every page in both languages, each naming its twin", () => {
+    const entries = sitemap();
+    const urls = entries.map((e) => new URL(e.url).pathname);
+    expect(urls).toEqual(["/", "/ko", "/about", "/ko/about"]);
+    const koAbout = entries.find((e) => e.url.endsWith("/ko/about"))!;
+    expect(koAbout.alternates?.languages).toMatchObject({
+      en: expect.stringMatching(/\/about$/),
+      ko: expect.stringMatching(/\/ko\/about$/),
+      "x-default": expect.stringMatching(/\/about$/),
+    });
+  });
+});

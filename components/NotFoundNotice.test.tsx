@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import NotFound from "./not-found";
+import { NotFoundNotice as NotFound } from "./NotFoundNotice";
 
 describe("NotFound", () => {
   it("says the page is missing and links back to the solver", () => {

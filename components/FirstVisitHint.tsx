@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useMessages } from "@/lib/i18n/locale";
+import { useLocalePath, useMessages } from "@/lib/i18n/locale";
 
 const STORAGE_KEY = "gtoLite.hintDismissed";
 
@@ -17,6 +17,7 @@ function wasDismissed(): boolean {
 /** One line on how the page works, until it's closed once in this browser. Rendered on the client only. */
 export function FirstVisitHint() {
   const t = useMessages();
+  const about = useLocalePath("/about");
   const [dismissed, setDismissed] = useState(wasDismissed);
   if (dismissed) return null;
 
@@ -33,7 +34,7 @@ export function FirstVisitHint() {
     <p className="flex items-center gap-2 rounded border border-line bg-surface px-3 py-1.5 text-sm text-ink-muted">
       <span className="min-w-0 flex-1">
         {t.hint.text}{" "}
-        <Link href="/about" className="text-accent underline-offset-2 hover:underline">
+        <Link href={about} className="text-accent underline-offset-2 hover:underline">
           {t.hint.learnMore}
         </Link>
       </span>

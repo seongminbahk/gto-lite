@@ -4,7 +4,9 @@ import Link from "next/link";
 import { ErrorNotice, PRIMARY_ACTION } from "@/components/ErrorNotice";
 import { useMessages } from "@/lib/i18n/locale";
 
-export default function NotFound() {
+/** Any address no page answers, in the visitor's remembered or browser language. */
+
+export function NotFoundNotice() {
   const t = useMessages();
   return (
     <ErrorNotice title={t.errorPage.notFoundTitle} body={t.errorPage.notFoundBody}>

@@ -1,7 +1,10 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { createContext, createElement, useContext, useSyncExternalStore, type ReactNode } from "react";
 import { MESSAGES, type Locale, type Messages } from "./messages";
+import { localePath } from "./paths";
+
+export { languageSwitchHref, localePath, stripLocale } from "./paths";
 
 const STORAGE_KEY = "gtoLite.locale";
 const DEFAULT_LOCALE: Locale = "en";
@@ -49,8 +52,36 @@ export function setLocale(locale: Locale) {
   listeners.forEach((listener) => listener());
 }
 
+/** The language a page's address fixes (/ko/...), or null where the visitor's choice decides. */
+const ForcedLocale = createContext<Locale | null>(null);
+
+/** Pins every component below to one language, on the server too: the pages under /ko. */
+export function LocaleProvider({ locale, children }: { locale: Locale; children: ReactNode }) {
+  return createElement(ForcedLocale.Provider, { value: locale }, children);
+}
+
+/** An address's language wins over the remembered choice. */
+export function resolveLocale(forced: Locale | null, chosen: Locale): Locale {
+  return forced ?? chosen;
+}
+
 export function useLocale(): Locale {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const forced = useContext(ForcedLocale);
+  const chosen = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  return resolveLocale(forced, chosen);
+}
+
+/** The language the address fixes, if any. */
+export function useForcedLocale(): Locale | null {
+  return useContext(ForcedLocale);
+}
+
+/**
+ * The address of `path` ("/", "/about") in the language the current page's
+ * address is in, so links under /ko stay under /ko.
+ */
+export function useLocalePath(path: string): string {
+  return localePath(useContext(ForcedLocale) ?? "en", path);
 }
 
 export function useMessages(): Messages {

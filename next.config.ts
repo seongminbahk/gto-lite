@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 import { withBotId } from "botid/next/config";
 
 const nextConfig: NextConfig = {
+  // English and Korean pages each have their own root layout (app/(en), app/(ko)/ko),
+  // so an unmatched address gets app/global-not-found.tsx, which brings its own document.
+  experimental: { globalNotFound: true },
   // Cross-origin isolation unlocks SharedArrayBuffer, which the postflop solver
   // needs to run its threaded WASM build (lib/postflopSolver/wasm/loadWeb.ts);
   // without it, solves fall back to one thread. Every resource the page

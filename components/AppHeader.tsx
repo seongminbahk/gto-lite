@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { SITE_NAME } from "@/lib/siteUrl";
-import { useMessages } from "@/lib/i18n/locale";
+import { useLocalePath, useMessages } from "@/lib/i18n/locale";
 
 const NAME = "shrink-0 text-xl font-semibold tracking-tight text-ink";
 
@@ -15,10 +15,11 @@ const NAME = "shrink-0 text-xl font-semibold tracking-tight text-ink";
  */
 export function AppHeader({ homeLink, onHome, children }: { homeLink?: boolean; onHome?: () => void; children?: ReactNode }) {
   const t = useMessages();
+  const home = useLocalePath("/");
   return (
     <header className="flex items-center justify-between gap-2 border-b border-line pb-2">
       {homeLink ? (
-        <Link href="/" className={NAME} aria-label={`${SITE_NAME} — ${t.header.home}`}>
+        <Link href={home} className={NAME} aria-label={`${SITE_NAME} — ${t.header.home}`}>
           {SITE_NAME}
         </Link>
       ) : onHome ? (
@@ -38,8 +39,9 @@ export const HEADER_LINK =
 
 export function AboutLink() {
   const t = useMessages();
+  const about = useLocalePath("/about");
   return (
-    <Link href="/about" className={HEADER_LINK} aria-label={t.header.about}>
+    <Link href={about} className={HEADER_LINK} aria-label={t.header.about}>
       <svg aria-hidden="true" viewBox="0 0 24 24" className="size-4 fill-none stroke-current" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="9" />
         <path d="M12 11v5M12 8h.01" />
