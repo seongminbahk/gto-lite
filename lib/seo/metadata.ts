@@ -3,7 +3,10 @@ import type { Locale } from "@/lib/i18n/messages";
 import { aboutContent } from "@/lib/i18n/aboutContent";
 import { localePath } from "@/lib/i18n/paths";
 import { SITE_NAME, siteUrl } from "@/lib/siteUrl";
+import { rangeCopy } from "./rangeCopy";
 import { siteCopy } from "./siteCopy";
+import { RANGES_INDEX_PATH, spotPath, type SpotPage } from "./spotPages";
+import type { RangeStats } from "./spotSummary";
 
 const OG_LOCALE: Record<Locale, string> = { en: "en_US", ko: "ko_KR" };
 
@@ -67,4 +70,14 @@ const ABOUT_DESCRIPTION: Record<Locale, string> = {
 
 export function aboutMetadata(locale: Locale): Metadata {
   return pageMetadata(locale, "/about", ABOUT_TITLE[locale], ABOUT_DESCRIPTION[locale]);
+}
+
+export function rangesIndexMetadata(locale: Locale): Metadata {
+  const { title, description } = rangeCopy(locale).index;
+  return pageMetadata(locale, RANGES_INDEX_PATH, title, description);
+}
+
+export function spotMetadata(locale: Locale, page: SpotPage, stats: RangeStats): Metadata {
+  const copy = rangeCopy(locale);
+  return pageMetadata(locale, spotPath(page), copy.title(page, stats), copy.description(page, stats));
 }

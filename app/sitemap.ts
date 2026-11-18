@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import type { Locale } from "@/lib/i18n/messages";
 import { localePath } from "@/lib/i18n/paths";
+import { RANGES_INDEX_PATH, allSpotPages, spotPath } from "@/lib/seo/spotPages";
 import { siteUrl } from "@/lib/siteUrl";
 
 type Page = { path: string; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"]; priority: number };
@@ -11,6 +12,8 @@ const LOCALES: Locale[] = ["en", "ko"];
 const PAGES: Page[] = [
   { path: "/", changeFrequency: "weekly", priority: 1 },
   { path: "/about", changeFrequency: "monthly", priority: 0.6 },
+  { path: RANGES_INDEX_PATH, changeFrequency: "monthly", priority: 0.8 },
+  ...allSpotPages().map((page): Page => ({ path: spotPath(page), changeFrequency: "monthly", priority: 0.7 })),
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

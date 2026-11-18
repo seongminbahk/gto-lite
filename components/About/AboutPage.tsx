@@ -5,14 +5,18 @@ import { AppHeader } from "@/components/AppHeader";
 import { LanguageToggle } from "@/components/Settings/LanguageToggle";
 import { aboutContent } from "@/lib/i18n/aboutContent";
 import { useLocale, useLocalePath } from "@/lib/i18n/locale";
+import { rangeCopy } from "@/lib/seo/rangeCopy";
+import { RANGES_INDEX_PATH } from "@/lib/seo/spotPages";
 import { FEEDBACK_URL } from "@/lib/siteUrl";
 
 const LIST = "flex flex-col gap-1.5 pl-5 text-base text-ink-muted";
 
 /** What the tool does, how its numbers are made and where they fall short, in the language chosen in the header. */
 export function AboutPage() {
-  const content = aboutContent(useLocale());
+  const locale = useLocale();
+  const content = aboutContent(locale);
   const home = useLocalePath("/");
+  const ranges = useLocalePath(RANGES_INDEX_PATH);
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-3 pb-16">
       <AppHeader homeLink>
@@ -25,6 +29,9 @@ export function AboutPage() {
         <div>
           <Link href={home} className="inline-block rounded bg-accent px-3 py-1.5 text-sm font-medium text-canvas pointer-coarse:min-h-11">
             {content.openSolver}
+          </Link>
+          <Link href={ranges} className="ml-3 inline-block text-sm text-accent underline-offset-2 hover:underline">
+            {rangeCopy(locale).browseCharts}
           </Link>
         </div>
       </div>

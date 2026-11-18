@@ -8,7 +8,9 @@ import { useMessages } from "@/lib/i18n/locale";
 import type { Messages } from "@/lib/i18n/messages";
 
 interface RangeGridProps {
-  scenario: RangeScenario;
+  scenario: Pick<RangeScenario, "hands">;
+  /** Square on a desktop too, for a chart in a page that scrolls rather than one filling the screen. */
+  alwaysSquare?: boolean;
 }
 
 function frequencyLine(frequency: HandFrequency, t: Messages): string {
@@ -19,7 +21,7 @@ function frequencyLine(frequency: HandFrequency, t: Messages): string {
     .join(" · ");
 }
 
-export function RangeGrid({ scenario }: RangeGridProps) {
+export function RangeGrid({ scenario, alwaysSquare }: RangeGridProps) {
   const t = useMessages();
   const legend: HandMatrixLegendItem[] = ACTION_KEYS.map((key) => ({ key, label: t.actionLegend[key], color: ACTION_COLORS[key] }));
   const [selectedHand, setSelectedHand] = useState<string | null>(null);
@@ -37,6 +39,7 @@ export function RangeGrid({ scenario }: RangeGridProps) {
         />
       )}
       legend={legend}
+      alwaysSquare={alwaysSquare}
       detail={
         <p data-testid="hand-detail" className="min-h-5 font-mono text-sm tabular-nums text-ink-muted lg:hidden">
           {selected ? `${selected.hand}: ${frequencyLine(selected, t)}` : t.preflop.tapHand}

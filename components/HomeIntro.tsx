@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { Locale } from "@/lib/i18n/messages";
 import { localePath } from "@/lib/i18n/paths";
+import { rangeCopy } from "@/lib/seo/rangeCopy";
 import { siteCopy } from "@/lib/seo/siteCopy";
+import { RANGES_INDEX_PATH } from "@/lib/seo/spotPages";
 
 /**
  * What the site is, in words the server renders: below the solver, so the
@@ -19,7 +21,10 @@ export function HomeIntro({ locale }: { locale: Locale }) {
           {paragraph}
         </p>
       ))}
-      <p className="text-sm">
+      <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+        <Link href={localePath(locale, RANGES_INDEX_PATH)} className="text-accent underline-offset-2 hover:underline">
+          {rangeCopy(locale).browseCharts}
+        </Link>
         <Link href={localePath(locale, "/about")} className="text-accent underline-offset-2 hover:underline">
           {copy.aboutLink}
         </Link>
