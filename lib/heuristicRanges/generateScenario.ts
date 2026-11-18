@@ -173,6 +173,8 @@ export interface FacingRaiseParams {
    * than suited aces and connectors, which call. Unset: the suited bluffs.
    */
   blindBluffMaxShare?: number;
+  /** With blindBluffMaxShare: its candidates are the hands within this many times the continuing range. Default 1. */
+  blindBluffReach?: number;
   /** With blindBluffMaxShare: the share of the bluffs that stay suited (the default candidates), the rest going to the blind's. Default 0. */
   blindSuitedBluffShare?: number;
 }
@@ -332,7 +334,7 @@ function valueAndBluffThreeBets(
   } else {
     const suitedShare = params.blindSuitedBluffShare ?? 0;
     const suited = threeBetBluffs(ranking, valueThreshold, bluffWidth * suitedShare);
-    const blind = blindThreeBetBluffs(ranking, valueThreshold, continueThreshold, bluffWidth * (1 - suitedShare), params.blindBluffMaxShare);
+    const blind = blindThreeBetBluffs(ranking, valueThreshold, continueThreshold * (params.blindBluffReach ?? 1), bluffWidth * (1 - suitedShare), params.blindBluffMaxShare);
     bluffs = new Map([...suited]);
     for (const [hand, share] of blind) bluffs.set(hand, Math.min(1, (bluffs.get(hand) ?? 0) + share));
   }

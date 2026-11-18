@@ -225,6 +225,12 @@ export interface GameFormat {
   sbFlatFactor?: number;
   /** Share of the SB's first-in raises spread over everything it plays; default none, all of them its best hands. */
   sbRaiseSpread?: number;
+  /** A seat that isn't a blind against an open: its 3-bet bluffs as a blind's (blindBluffMaxShare); unset, the suited ones. */
+  coldCallBluffMaxShare?: number;
+  /** With coldCallBluffMaxShare: its bluffs come from hands within this many times its continuing range. Default 1. */
+  coldCallBluffReach?: number;
+  /** A seat that isn't a blind against an open: the share of its 3-bets that are value; unset, threeBetValueShare. */
+  coldCallThreeBetValueShare?: number;
   /** Facing a 3-bet over its own first-in raise, the SB keeps this share of what another opener would; default 1. */
   sbOpenerKeepFactor?: number;
   /** How much a narrower opener narrows what the BB defends; default 0.5, the square root of its width. */
@@ -460,6 +466,16 @@ const CASH_8: GameFormat = {
   sbOpenerKeepFactor: 1.1,
   blindBluffMaxShare: 0.8,
   sbSuitedBluffShare: 0.5,
+  // A commercial solver's cold caller (6-max NL10, a cutoff open and the button, read 2026-11-18) 3-bets
+  // only its very best hands for value (AA–JJ, AK, AQs) and, as bluffs, the offsuit broadways (KQo, AJo, KJo
+  // every time) and the suited kings with a low kicker; it flats the pairs and suited broadways. Ours 3-bet
+  // 77–99, JTs and KQs for value and flatted AQo–AJo and A9s–A7s, so on 12 flops of that pot the cutoff's
+  // c-bet agreed 43.7% and the button's 69.1%. A third of the 3-bets value, and the bluffs as a blind's drawn
+  // from hands within 1.5 times what continues: 73.7% and 77.8% (a quarter value gave 81.2% and 79.5% but
+  // moved the button's 3-bet and the opener's 4-bet past the preflop tests).
+  coldCallThreeBetValueShare: 0.35,
+  coldCallBluffMaxShare: 1,
+  coldCallBluffReach: 1.5,
   bbVsLimpMix: { valueWidth: 0.12, slice: 0.32 },
   reraiseRangeEquityWeight: 1,
   reraiseValueMixSpread: 0.2,

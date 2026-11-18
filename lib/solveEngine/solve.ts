@@ -483,12 +483,13 @@ function facingRaiseParams(ctx: FacingRaiseContext): FacingRaiseParams {
     coldCallBase: format.coldCallBase,
     coldCallOopMultiplier: format.coldCallOopMultiplier,
     closingContinueFactor: format.closingContinueFactor * (blindVsBlind?.continueFactor ?? 1),
-    threeBetValueShare: (ctx.isBlind && format.blindThreeBetValueShare) || format.threeBetValueShare,
+    threeBetValueShare: (ctx.isBlind ? format.blindThreeBetValueShare : format.coldCallThreeBetValueShare) || format.threeBetValueShare,
     threeBetMix: ctx.isBlind ? undefined : format.coldCallThreeBetMix,
     continueFactor: rakeContinueFactor(ctx),
     callFactor: flatCallFactor(ctx),
     bubbleFactor: partialRiskBubbleFactor(ctx),
-    blindBluffMaxShare: ctx.isBlind ? format.blindBluffMaxShare : undefined,
+    blindBluffMaxShare: ctx.isBlind ? format.blindBluffMaxShare : format.coldCallBluffMaxShare,
+    blindBluffReach: ctx.isBlind ? undefined : format.coldCallBluffReach,
     blindSuitedBluffShare: activeSeat === "SB" ? format.sbSuitedBluffShare : undefined,
   };
 }
