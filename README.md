@@ -4,7 +4,7 @@
 
 Poker ranges and a postflop solver in your browser. Free and open source, no sign-up.
 
-**Try it: [gto-lite-beryl.vercel.app](https://gto-lite-beryl.vercel.app)**
+**Try it: [gto-lite-beryl.vercel.app](https://gto-lite-beryl.vercel.app)** · [Preflop range charts](https://gto-lite-beryl.vercel.app/ranges) · [한국어 사이트](https://gto-lite-beryl.vercel.app/ko)
 
 ![A flop solved in gtoLite: the button's strategy on K72 rainbow after the big blind checks](docs/screenshot.jpg)
 

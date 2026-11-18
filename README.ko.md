@@ -4,7 +4,7 @@
 
 브라우저에서 보는 포커 레인지와 포스트플랍 솔버. 무료 오픈소스이고 가입이 필요 없습니다.
 
-**바로 써 보기: [gto-lite-beryl.vercel.app](https://gto-lite-beryl.vercel.app)**
+**바로 써 보기: [gto-lite-beryl.vercel.app/ko](https://gto-lite-beryl.vercel.app/ko)** · [프리플랍 레인지 차트](https://gto-lite-beryl.vercel.app/ko/ranges)
 
 ![gtoLite에서 푼 플랍: K72 레인보우에서 빅 블라인드가 체크한 뒤 버튼의 전략](docs/screenshot.jpg)
 
