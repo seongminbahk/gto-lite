@@ -448,6 +448,16 @@ const CASH_8: GameFormat = {
   },
   blindVsBlind: { continueFactor: CASH_BB_VS_SB_CONTINUE_FACTOR, threeBetWidthRatio: CASH_BB_VS_SB_THREE_BET_WIDTH_RATIO },
   sbThreeBetKeepFactor: CASH_SB_THREE_BET_KEEP_FACTOR,
+  // A commercial solver's SB first in (6-max NL10/NL50/NL500/no rake and 8-max, read 2026-11-18) raises 70%
+  // of what it plays at NL10, a slice of nearly every hand, and limps the rest: AA–TT, AKs–ATs and the offsuit
+  // aces mostly raise, but so do K6s–K2s and Q7s–Q3s, while 99–44, A9s–A2s and the suited broadways limp
+  // half the time or more. Raising only the top tier left the limp range offsuit junk, and on limped flops the
+  // SB bet 6–56% where the solver bets 53–100%. Spreading three quarters of the raises over everything played
+  // (as in tournaments at 100bb): SB first-in hand agreement 6-max 79.5→85.9%, 8-max 68.4→77.5%; preflop
+  // overall +0.2–0.3pp, live 10% rake (which barely limps) −0.1pp. On 12 flops each, flop hand agreement
+  // rose: limped pots SB 59.4→85.6%, BB 72.7→83.3%; SB-raised pots SB 67.9→73.0%, BB 83.5→84.0%.
+  sbRaiseSpread: 0.75,
+  sbOpenerKeepFactor: 1.1,
   blindBluffMaxShare: 0.8,
   sbSuitedBluffShare: 0.5,
   bbVsLimpMix: { valueWidth: 0.12, slice: 0.32 },
