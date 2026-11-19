@@ -227,6 +227,8 @@ export interface GameFormat {
   sbRaiseSpread?: number;
   /** A seat that isn't a blind against an open: its 3-bet bluffs as a blind's (blindBluffMaxShare); unset, the suited ones. */
   coldCallBluffMaxShare?: number;
+  /** The BB's 3-bet bluffs against an SB open lean to the bottom of what it continues with, as depth^this; default 0, an even slice. */
+  bbBluffDepthTilt?: number;
   /** With coldCallBluffMaxShare: its bluffs come from hands within this many times its continuing range. Default 1. */
   coldCallBluffReach?: number;
   /** A seat that isn't a blind against an open: the share of its 3-bets that are value; unset, threeBetValueShare. */
@@ -307,6 +309,8 @@ export interface GameFormat {
   bbVsLimpMix?: { valueWidth: number; slice: number; minStackBb?: number };
   /** false: a blind facing a 4-bet out of position 5-bets or folds, never calls. Default true. */
   blindFacingFourBetCalls?: boolean;
+  /** A seat that isn't a blind: the share of its 3-bet bluffs that are suited, the rest from coldCallBluffMaxShare's candidates. */
+  coldCallSuitedBluffShare?: number;
   /** The SB's share of those bluffs that stay suited (FacingRaiseParams.blindSuitedBluffShare). */
   sbSuitedBluffShare?: number;
 }
@@ -463,7 +467,14 @@ const CASH_8: GameFormat = {
   // overall +0.2–0.3pp, live 10% rake (which barely limps) −0.1pp. On 12 flops each, flop hand agreement
   // rose: limped pots SB 59.4→85.6%, BB 72.7→83.3%; SB-raised pots SB 67.9→73.0%, BB 83.5→84.0%.
   sbRaiseSpread: 0.75,
-  sbOpenerKeepFactor: 1.1,
+  sbOpenerKeepFactor: 1.2,
+  // The same solver's BB against an SB open (read 2026-11-18) bluffs with A2o–A7o, K8o–K9o, Q9o and the low
+  // suited queens and jacks, and flats KQo, KJo, AJo–A9o; an even slice of its candidates 3-bet those
+  // broadways as often as the weak aces. Leaning the bluffs to the bottom of what continues: BB against the
+  // SB 84.2→86.9%; preflop overall 6-max 90.2→90.3%. (Against the button it moved the button's answer to the
+  // 3-bet past its test, so only against the SB.) Its 3-bets now hold more
+  // of its best hands, so the SB 4-bets wider (CASH_SB_FOUR_BET_WIDTH_RATIO) and keeps more (sbOpenerKeepFactor).
+  bbBluffDepthTilt: 1,
   blindBluffMaxShare: 0.8,
   sbSuitedBluffShare: 0.5,
   // A commercial solver's cold caller (6-max NL10, a cutoff open and the button, read 2026-11-18) 3-bets
@@ -474,6 +485,13 @@ const CASH_8: GameFormat = {
   // from hands within 1.5 times what continues: 73.7% and 77.8% (a quarter value gave 81.2% and 79.5% but
   // moved the button's 3-bet and the opener's 4-bet past the preflop tests).
   coldCallThreeBetValueShare: 0.35,
+  // The same solver's button against a cutoff open (its own flop records, read 2026-11-19) 3-bets A2s–A9s at
+  // 55–100% and K4s–K7s at 17–46% beside the offsuit broadways, and flats AJs/ATs/KQs/KJs and the middle pairs
+  // in a mix; ours flatted A4s–A9s at 100%, so its flatting range was weaker than the reference's and the
+  // cutoff c-bet 50–80% where the reference checks almost everything. Low suited aces and kings as 40% of the
+  // bluffs: button vs the cutoff 93.5→95.0%, preflop overall 6-max 90.3→90.4%, 8-max 88.3→88.7%; cutoff-open
+  // button-call flops (6 boards) 51.8/55.3→61.5/62.7%.
+  coldCallSuitedBluffShare: 0.4,
   coldCallBluffMaxShare: 1,
   coldCallBluffReach: 1.5,
   bbVsLimpMix: { valueWidth: 0.12, slice: 0.32 },

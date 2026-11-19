@@ -490,6 +490,8 @@ function facingRaiseParams(ctx: FacingRaiseContext): FacingRaiseParams {
     bubbleFactor: partialRiskBubbleFactor(ctx),
     blindBluffMaxShare: ctx.isBlind ? format.blindBluffMaxShare : format.coldCallBluffMaxShare,
     blindBluffReach: ctx.isBlind ? undefined : format.coldCallBluffReach,
-    blindSuitedBluffShare: activeSeat === "SB" ? format.sbSuitedBluffShare : undefined,
+    blindBluffDepthTilt: blindVsBlind ? format.bbBluffDepthTilt : undefined,
+    blindSuitedBluffShare: activeSeat === "SB" ? format.sbSuitedBluffShare : ctx.isBlind ? undefined : format.coldCallSuitedBluffShare,
+    blockerSuitedBluffs: !ctx.isBlind,
   };
 }

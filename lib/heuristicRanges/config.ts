@@ -141,8 +141,9 @@ export const CASH_FOUR_BET_BLUFF_SHARE = 0.4;
 export const CASH_BB_VS_SB_CONTINUE_FACTOR = 1.4;
 export const CASH_BB_VS_SB_THREE_BET_WIDTH_RATIO = 0.54;
 // Since the SB spreads its raises over everything it plays (sbRaiseSpread, 2026-11-18) its raising range holds
-// fewer of its best hands, so it 4-bets a larger share of them and keeps 10% more (sbOpenerKeepFactor).
-export const CASH_SB_FOUR_BET_WIDTH_RATIO = 1;
+// fewer of its best hands, so it 4-bets a larger share of them and keeps more (sbOpenerKeepFactor); and since
+// the BB's 3-bet bluffs lean to the bottom of its range (bbBluffDepthTilt) the SB 4-bets wider still.
+export const CASH_SB_FOUR_BET_WIDTH_RATIO = 1.3;
 export const CASH_SB_FOUR_BET_BLUFF_SHARE = 0.3;
 export const CASH_SB_THREE_BET_KEEP_FACTOR = 0.83;
 /** Against a 3-bet made in position, wider: the public solver ranges' early seats 4-bet a button 3-bet 22–25% of the time (referenceRanges.test.ts). */
