@@ -42,6 +42,10 @@ export interface PlayabilityDepth {
   bonusScale: number;
   smallPairExtra: number;
   suitedConnectorExtra: number;
+  /** Added to offsuit hands that aren't pairs (a 3-bet pot leaves them few ways to continue). */
+  offsuitExtra?: number;
+  /** Added to suited hands with both cards ten or higher. */
+  suitedBroadwayExtra?: number;
 }
 
 /** The bonuses as they are. */
@@ -96,7 +100,9 @@ function depthBonus(h: CanonicalHand, depth: PlayabilityDepth): number {
   return (
     playabilityBonus(h) * depth.bonusScale +
     (isSmallPair(h) ? depth.smallPairExtra : 0) +
-    (suitedConnector ? depth.suitedConnectorExtra : 0)
+    (suitedConnector ? depth.suitedConnectorExtra : 0) +
+    (h.type === "offsuit" ? (depth.offsuitExtra ?? 0) : 0) +
+    (h.type === "suited" && RANKS.indexOf(h.rankLow) <= RANKS.indexOf("T") ? (depth.suitedBroadwayExtra ?? 0) : 0)
   );
 }
 

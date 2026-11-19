@@ -89,7 +89,9 @@ describe("cash 6-max against reference NL10", () => {
   });
 
   it.each([
-    ["button vs a BB 3-bet", [...toBtn, ...steps("BTN:raise", "SB:fold", "BB:raise")], toBtn, (h: HandFrequency) => h.raise, [15.2, 13.8, 71.0]],
+    // Since the ranking facing a blind's 3-bet favours suited broadways over offsuit hands (2026-11-19) the button
+    // 4-bets about 2.5pp less and calls 3pp more; hand agreement with GTO Wizard's NL50 rose, and the flops after it, so 3.5pp here.
+    ["button vs a BB 3-bet", [...toBtn, ...steps("BTN:raise", "SB:fold", "BB:raise")], toBtn, (h: HandFrequency) => h.raise, [15.2, 13.8, 71.0], 3.5],
     [
       "cutoff vs a BB squeeze, button still in",
       [...toCo, ...steps("CO:raise", "BTN:call", "SB:fold", "BB:raise")],

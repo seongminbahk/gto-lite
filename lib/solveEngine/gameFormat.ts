@@ -1,4 +1,5 @@
 import type { Position } from "@/types/rangeData";
+import type { PlayabilityDepth } from "@/lib/equity/handStrength";
 import {
   CASH_BB_VS_SB_CONTINUE_FACTOR,
   CASH_BB_VS_SB_THREE_BET_WIDTH_RATIO,
@@ -270,6 +271,11 @@ export interface GameFormat {
   facingFourBetKeepBase?: number;
   /** How much of the ranking facing a re-raise is equity against the raiser's range, the rest playability. Default 0. */
   reraiseRangeEquityWeight?: number;
+  /**
+   * Added to the ranking's bonuses facing a re-raise: offsuit hands and suited
+   * broadways, which a 3-bet pot treats very differently from a single-raised one.
+   */
+  reraisePlayabilityShift?: Pick<PlayabilityDepth, "offsuitExtra" | "suitedBroadwayExtra">;
   /** Re-raising a 4-bet or more, as a share of the raiser's range, value and bluffs. Default: as fourBet. */
   fiveBet?: {
     widthRatio: number;
@@ -496,6 +502,10 @@ const CASH_8: GameFormat = {
   coldCallBluffReach: 1.5,
   bbVsLimpMix: { valueWidth: 0.12, slice: 0.32 },
   reraiseRangeEquityWeight: 1,
+  // Facing a blind's 3-bet (solve.ts applies it there only). Set against GTO Wizard's NL50 per-hand calls of
+  // a 3-bet: they call with KTs/QTs/JTs and fold or 4-bet AJo-type hands. Overlap of the calling ranges
+  // 43% → 50%; flop hand agreement of the caller in BTN-BB 70.7→79.3%, SB-BB 56.4→64.7%, BTN-SB 70.9→75.6%.
+  reraisePlayabilityShift: { offsuitExtra: -0.06, suitedBroadwayExtra: 0.05 },
   reraiseValueMixSpread: 0.2,
   reraiseBlockerBluffMaxShare: 0.1,
   // A commercial solver's 8-max 100bb (no rake and live 10%, read 2026-11-17):
