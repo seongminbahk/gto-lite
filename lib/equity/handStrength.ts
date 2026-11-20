@@ -59,10 +59,15 @@ export const BASE_PLAYABILITY: PlayabilityDepth = { bonusScale: 1, smallPairExtr
  * these bonuses took the opens from 85% agreement to 90% and the cold calls
  * from 68% to 73%; at 20bb smaller ones fit better. Interpolated between
  * these stacks and flat outside them.
+ *
+ * At 20 and 40bb a commercial solver's whole MTT tree (read 2026-11-20) opens
+ * 65s, 76s, 87s and 54s more and weak suited kings and queens less, so suited
+ * connectors get more there (0→0.02, 0.02→0.04): line-weighted agreement
+ * 20–80bb +0.04–0.27pp, 100bb unchanged.
  */
 export const PLAYABILITY_BY_STACK: readonly ({ stackBb: number } & PlayabilityDepth)[] = [
-  { stackBb: 20, bonusScale: 0.75, smallPairExtra: 0, suitedConnectorExtra: 0 },
-  { stackBb: 40, bonusScale: 1, smallPairExtra: 0.03, suitedConnectorExtra: 0.02 },
+  { stackBb: 20, bonusScale: 0.75, smallPairExtra: 0, suitedConnectorExtra: 0.02 },
+  { stackBb: 40, bonusScale: 1, smallPairExtra: 0.03, suitedConnectorExtra: 0.04 },
   { stackBb: 100, bonusScale: 1.5, smallPairExtra: 0.03, suitedConnectorExtra: 0.02 },
 ];
 
