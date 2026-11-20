@@ -49,6 +49,13 @@ export const RAKE_RELIEF_SB_RAISE_CUT = 5;
 /** ...and the hands it plays widen by 1 + gain × relief. */
 export const RAKE_RELIEF_SB_PLAY_GAIN = 4;
 /**
+ * Without rake a speculative hand keeps what it wins postflop, so suited connectors rank higher in every range:
+ * this much on their playability bonus with no rake, scaled by how much lighter than the default the rake is.
+ * Against a commercial solver's whole preflop tree (2026-11-20): cEV 91.45→92.29%, NL500 93.31→93.60%,
+ * 8-max no rake 88.8→89.1%, NL10 and NL50 unchanged.
+ */
+export const RAKE_RELIEF_SUITED_CONNECTOR_GAIN = 0.06;
+/**
  * Between the push/fold stacks and JAM_MAX_STACK_BB, a share of each first-in
  * raising range jams instead, growing as the stack shrinks and reaching
  * JAM_MAX_SHARE at JAM_MIN_STACK_BB. The top RAISE_KEEP_SHARE of the range

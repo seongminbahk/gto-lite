@@ -19,6 +19,7 @@ import {
   RAKE_RELIEF_POT_GROWTH,
   RAKE_RELIEF_RERAISE_CUT,
   RAKE_RELIEF_SB_PLAY_GAIN,
+  RAKE_RELIEF_SUITED_CONNECTOR_GAIN,
   RAKE_RELIEF_SB_RAISE_CUT,
   RERAISE_KEEP_BASE,
 } from "@/lib/heuristicRanges/config";
@@ -249,7 +250,7 @@ function solveShoveSpot(ctx: SpotContext): SolvedNode {
 
 function solveFirstIn(ctx: SpotContext): SolvedNode {
   const { activeSeat, effectiveStackBb, format, firstInWidths } = ctx;
-  const ranking = getPlayabilityRanking(ctx.matrix, ctx.format.playabilityByStack ? ctx.effectiveStackBb : undefined);
+  const ranking = getPlayabilityRanking(ctx.matrix, ctx.format.playabilityByStack ? ctx.effectiveStackBb : undefined, rakeSuitedConnectorGain(ctx));
   if (activeSeat === "BB") {
     const mix = format.bbVsLimpMix && effectiveStackBb >= (format.bbVsLimpMix.minStackBb ?? 0) ? format.bbVsLimpMix : undefined;
     return { source: "heuristic-approx", hands: generateBbVsLimpScenario(ranking, mix) };
@@ -294,13 +295,13 @@ function facingRaiseRanking(ctx: FacingRaiseContext): Map<string, number> {
   if (ctx.potState.raiseDepth >= 2 && reraiseWeight > 0 && hasVillainRange) {
     // Only against a blind's 3-bet: an in-position 3-bettor's tighter range has the reference flatting small pairs and 4-betting suited broadways instead.
     const blindRaiser = ctx.potState.raiseDepth === 2 && (ctx.lastAggressor === "SB" || ctx.lastAggressor === "BB");
-    return getRangePlayabilityRanking(ctx.matrix, ctx.villainRange!, reraiseWeight, stack, blindRaiser ? ctx.format.reraisePlayabilityShift : undefined);
+    return getRangePlayabilityRanking(ctx.matrix, ctx.villainRange!, reraiseWeight, stack, blindRaiser ? ctx.format.reraisePlayabilityShift : undefined, rakeSuitedConnectorGain(ctx));
   }
   if (ctx.isBlind && ctx.potState.raiseDepth === 1 && !ctx.ownDecision && hasVillainRange) {
-    return getRangePlayabilityRanking(ctx.matrix, ctx.villainRange!, BLIND_DEFENSE_RANGE_EQUITY_WEIGHT, stack);
+    return getRangePlayabilityRanking(ctx.matrix, ctx.villainRange!, BLIND_DEFENSE_RANGE_EQUITY_WEIGHT, stack, undefined, rakeSuitedConnectorGain(ctx));
   }
-  if (weight === 0 || !coldCall || !hasVillainRange) return getPlayabilityRanking(ctx.matrix, stack);
-  return getRangePlayabilityRanking(ctx.matrix, ctx.villainRange!, weight, stack);
+  if (weight === 0 || !coldCall || !hasVillainRange) return getPlayabilityRanking(ctx.matrix, stack, rakeSuitedConnectorGain(ctx));
+  return getRangePlayabilityRanking(ctx.matrix, ctx.villainRange!, weight, stack, undefined, rakeSuitedConnectorGain(ctx));
 }
 
 function solveFacingRaise(ctx: FacingRaiseContext): SolvedNode {
@@ -409,6 +410,12 @@ function fourBetValueShare(ctx: FacingRaiseContext): number {
 }
 
 /** A cash game raked more lightly than the default; tournaments have no rake to be lighter than. */
+/** With a lighter rake than the default, the suited connectors' extra playability (formats ranked the same at every depth only). */
+function rakeSuitedConnectorGain(ctx: SpotContext): number {
+  if (ctx.format.playabilityByStack || !lighterThanDefaultRake(ctx)) return 0;
+  return RAKE_RELIEF_SUITED_CONNECTOR_GAIN * (1 - rakeShare(ctx.rake.structure) / rakeShare(DEFAULT_RAKE_SETTINGS.structure));
+}
+
 function lighterThanDefaultRake(ctx: SpotContext): boolean {
   return !!ctx.format.allowsRake && rakeShare(ctx.rake.structure) < rakeShare(DEFAULT_RAKE_SETTINGS.structure);
 }

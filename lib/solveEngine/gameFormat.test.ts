@@ -180,6 +180,18 @@ describe("rake", () => {
     expect(share("BTN", initialPotState(CASH_8), preset("live"))).toBeGreaterThan(share("BTN", initialPotState(CASH_8), NO_RAKE_SETTINGS));
   });
 
+  it("ranks suited connectors higher with a lighter rake, and only then", () => {
+    const toCo = path(CASH_6, ["LJ", "fold"], ["HJ", "fold"]);
+    if (toCo.status !== "active") throw new Error("expected CO to act");
+    const opens = (rake: RakeSettings, hand: string) => {
+      const h = solveActiveSeat(matrix, "CO", toCo.potState, 100, rake).hands.find((x) => x.hand === hand)!;
+      return h.raise + (h.allin ?? 0);
+    };
+    // Open widths stay as they are, so a hand like 65s takes a slot from a weak offsuit one.
+    expect(opens(NO_RAKE_SETTINGS, "65s")).toBeGreaterThan(opens(DEFAULT_RAKE_SETTINGS, "65s"));
+    expect(opens(NO_RAKE_SETTINGS, "54s")).toBeGreaterThanOrEqual(opens(DEFAULT_RAKE_SETTINGS, "54s"));
+  });
+
   it("prices a lighter rake on the pot a call grows into", () => {
     // NL500's 1bb cap rakes a single-raised pot as NL10 does, so the BB defends about the same; with no rake it defends wider.
     const defends = (rake: RakeSettings) => playedShare(bbVsBtn(rake));

@@ -16,8 +16,9 @@ const rankingsByMatrix = new WeakMap<EquityMatrix, Map<string, Map<string, numbe
 const pushFoldByMatrix = new WeakMap<EquityMatrix, Map<string, PushFoldResult>>();
 
 /** The playability ranking at this effective stack (see playabilityAt); with no stack, the bonuses as they are. */
-export function getPlayabilityRanking(matrix: EquityMatrix, effectiveStackBb?: number): Map<string, number> {
-  const depth = effectiveStackBb === undefined ? BASE_PLAYABILITY : playabilityAt(effectiveStackBb);
+export function getPlayabilityRanking(matrix: EquityMatrix, effectiveStackBb?: number, suitedConnectorGain = 0): Map<string, number> {
+  const atDepth = effectiveStackBb === undefined ? BASE_PLAYABILITY : playabilityAt(effectiveStackBb);
+  const depth = { ...atDepth, suitedConnectorExtra: atDepth.suitedConnectorExtra + suitedConnectorGain };
   const key = `${depth.bonusScale}|${depth.smallPairExtra}|${depth.suitedConnectorExtra}`;
   let byDepth = rankingsByMatrix.get(matrix);
   if (!byDepth) {
@@ -42,9 +43,10 @@ export function getRangePlayabilityRanking(
   weight: number,
   effectiveStackBb?: number,
   shift?: Pick<PlayabilityDepth, "offsuitExtra" | "suitedBroadwayExtra">,
+  suitedConnectorGain = 0,
 ): Map<string, number> {
   const atDepth = effectiveStackBb === undefined ? BASE_PLAYABILITY : playabilityAt(effectiveStackBb);
-  const depth: PlayabilityDepth = { ...atDepth, ...shift };
+  const depth: PlayabilityDepth = { ...atDepth, ...shift, suitedConnectorExtra: atDepth.suitedConnectorExtra + suitedConnectorGain };
   const rangeKey = ALL_HANDS.map((h) => range.get(h.hand) ?? 0).join(",");
   const key = `${weight}|${depth.bonusScale}|${depth.smallPairExtra}|${depth.suitedConnectorExtra}|${depth.offsuitExtra ?? 0}|${depth.suitedBroadwayExtra ?? 0}|${rangeKey}`;
   let byKey = rangeRankingsByMatrix.get(matrix);
