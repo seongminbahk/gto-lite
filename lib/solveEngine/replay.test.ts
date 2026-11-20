@@ -165,7 +165,7 @@ describe("replayActionPath — limped pots", () => {
 
   it("rejects a limp from any other seat, at push/fold stacks, and a BB fold when checking is free", () => {
     expect(replayActionPath([{ actor: "UTG", action: "call" }], 40, TOURNAMENT_8).status).toBe("invalid");
-    expect(replayActionPath([...foldsToSb, { actor: "SB", action: "call" }], 15, TOURNAMENT_8).status).toBe("invalid");
+    expect(replayActionPath([...foldsToSb, { actor: "SB", action: "call" }], 14, TOURNAMENT_8).status).toBe("invalid");
     expect(replayActionPath([...foldsToSb, { actor: "SB", action: "call" }, { actor: "BB", action: "fold" }], 40, TOURNAMENT_8).status).toBe("invalid");
   });
 });

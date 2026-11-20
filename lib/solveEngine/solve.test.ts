@@ -73,7 +73,7 @@ describe("solveActiveSeat", () => {
   });
 
   it("routes a shallow-stack opening spot to Nash and produces allin-only frequencies", () => {
-    const result = solveActiveSeat(matrix, "UTG", initialPotState(), 15);
+    const result = solveActiveSeat(matrix, "UTG", initialPotState(), 14);
     expect(result.source).toBe("nash-shove-fold");
     for (const h of result.hands) {
       expect(h.call).toBe(0);
@@ -131,7 +131,7 @@ describe("solveActiveSeat", () => {
   });
 
   it("stays push/fold for SB at the Nash stacks, where limping isn't offered", () => {
-    const result = solveActiveSeat(matrix, "SB", foldedToSb(15), 15);
+    const result = solveActiveSeat(matrix, "SB", foldedToSb(14), 14);
     expect(result.source).toBe("nash-shove-fold");
     expect(combosWith(result.hands, (h) => h.call)).toBe(0);
   });
@@ -247,7 +247,9 @@ describe("solveActiveSeat", () => {
       expect(hands.find((h) => h.hand === "AA")!.allin).toBe(1);
       const jammed = combosWith(hands, (h) => h.allin ?? 0);
       const called = combosWith(hands, (h) => h.call);
-      expect(jammed).toBeGreaterThan(called);
+      // Its best hands jam; a commercial solver's BB calls off half its 3-bets against a 30bb 4-bet, so calls aren't fewer.
+      for (const hand of ["KK", "QQ", "AKs", "AKo"]) expect(hands.find((h) => h.hand === hand)!.allin).toBe(1);
+      expect(jammed).toBeGreaterThan(0);
       expect(called).toBeGreaterThan(0);
     });
 

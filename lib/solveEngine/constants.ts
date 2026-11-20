@@ -7,8 +7,12 @@ export const BB_ANTE_BB = 1;
 export const STACK_MIN_BB = 2;
 export const STACK_MAX_BB = 100;
 
-/** Always route to the Nash push/fold solver at or under this effective stack. */
-export const NASH_FLAT_STACK_THRESHOLD_BB = 15;
+/**
+ * Always route to the Nash push/fold solver at or under this effective stack. At 15bb a commercial
+ * solver's MTT tree still min-raises most opens (read 2026-11-20), and the depth-tuned heuristic
+ * matched it at 93.9% line-weighted agreement where push/fold matched 86.7%.
+ */
+export const NASH_FLAT_STACK_THRESHOLD_BB = 14;
 /** Route to Nash when facing a raise and remaining-stack/pot is at or under this ratio. */
 export const NASH_SPR_THRESHOLD = 1;
 /**

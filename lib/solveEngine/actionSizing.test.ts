@@ -92,8 +92,8 @@ describe("computeAvailableActions", () => {
   const limped = () => applyAction(initialPotState(), "SB", "call", { effectiveStackBb: 40 });
 
   it("offers SB a half-bb limp in an unraised pot, but no other seat, and not at push/fold stacks", () => {
-    expect(computeAvailableActions("SB", initialPotState(), 16).call).toEqual({ label: "Limp", amountBb: 0.5 });
-    expect(computeAvailableActions("SB", initialPotState(), 15).call).toBeNull();
+    expect(computeAvailableActions("SB", initialPotState(), 15).call).toEqual({ label: "Limp", amountBb: 0.5 });
+    expect(computeAvailableActions("SB", initialPotState(), 14).call).toBeNull();
     expect(computeAvailableActions("BTN", initialPotState(), 40).call).toBeNull();
   });
 
@@ -141,7 +141,7 @@ describe("computeAvailableActions", () => {
   });
 
   it("only offers all-in at the push/fold stacks, whose charts have no smaller raise", () => {
-    expect(computeAvailableActions("UTG", initialPotState(), 15)).toMatchObject({ raise: null, allin: { toBb: 15 } });
-    expect(computeAvailableActions("UTG", initialPotState(), 16).raise).not.toBeNull();
+    expect(computeAvailableActions("UTG", initialPotState(), 14)).toMatchObject({ raise: null, allin: { toBb: 14 } });
+    expect(computeAvailableActions("UTG", initialPotState(), 15).raise).not.toBeNull();
   });
 });

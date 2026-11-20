@@ -67,7 +67,7 @@ const en: RangeCopy = {
       "Free preflop charts for every seat: 8-handed tournament open and push/fold ranges from 10 to 100bb, and 6-max cash opening ranges at 100bb with rake.",
     intro: [
       "Each chart is the range a seat plays when everyone folds to it, the same one the solver shows for that spot. Pick a format, a stack and a seat.",
-      "From 15bb down, the ranges are push/fold Nash solves; deeper, they are estimated from charts tuned to solver output.",
+      "From 14bb down, the ranges are push/fold Nash solves; deeper, they are estimated from charts tuned to solver output.",
     ],
     seat: "Seat",
   },
@@ -130,7 +130,7 @@ const ko: RangeCopy = {
       "모든 자리의 무료 프리플랍 차트: 10~100bb 8인 토너먼트 오픈·푸시/폴드 레인지와 레이크가 있는 100bb 6맥스 캐시 오픈 레인지.",
     intro: [
       "각 차트는 그 자리까지 모두 폴드했을 때 플레이하는 레인지로, 솔버가 같은 스팟에서 보여주는 것과 같습니다. 포맷, 스택, 자리를 고르세요.",
-      "15bb 이하는 푸시/폴드 내시 솔브이고, 그보다 깊으면 솔버 결과에 맞춘 차트로 추정한 값입니다.",
+      "14bb 이하는 푸시/폴드 내시 솔브이고, 그보다 깊으면 솔버 결과에 맞춘 차트로 추정한 값입니다.",
     ],
     seat: "자리",
   },
