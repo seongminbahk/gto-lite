@@ -1,9 +1,10 @@
 import type { HandSummary, StreetSummary } from "./summarySchema";
+import { notesForHand } from "./knowledge/select";
 
 export type ExplainLanguage = "ko" | "en";
 
 /** Bumped whenever the instructions change, so cached explanations written under older ones aren't served. */
-export const PROMPT_VERSION = 3;
+export const PROMPT_VERSION = 4;
 
 const HEADINGS: Record<ExplainLanguage, { preflop: string; Flop: string; Turn: string; River: string; result: string }> = {
   ko: { preflop: "프리플랍", Flop: "플랍", Turn: "턴", River: "리버", result: "결과" },
@@ -32,11 +33,13 @@ const GLOSSARY = `How to read the data:
 export function explainInstructions(language: ExplainLanguage, streets: StreetSummary["street"][]): string {
   const h = HEADINGS[language];
   const sections = [h.preflop, ...streets.map((s) => h[s]), h.result].map((title) => `"## ${title}"`).join(", ");
-  return `You are a poker coach explaining one finished hand to a player studying game theory optimal (GTO) play. The user message is JSON holding everything our solver computed for this hand. Explain why the strategy looks the way it does, using that data.
+  return `You are a poker coach explaining one finished hand to a player studying game theory optimal (GTO) play. The user message is JSON: "hand" holds everything our solver computed for this hand, and "notes" holds short background notes on the poker concepts this kind of hand involves. Explain why the strategy looks the way it does, using that data.
 
 Rules:
 - Ground every claim in the data. Quote only numbers that appear in it, rounded as given or less. Never invent frequencies, EVs, equities, ranges or hands that aren't there. General poker principles are fine, but say them as principles, not as results of this solve.
 - The data holds ranges, not the players' actual cards. Talk about ranges and buckets, not a particular holding. Nobody's cards are known, so never say who won a showdown: result equity is each range's average share of the pot on this line, not a result. Only a fold has a winner.
+- Call it a range or nut advantage only when the two ranges' buckets differ by several points (about 10 for nuts+strong, 5 for nuts); when they are within a few points, say the ranges are close.
+- Use the notes for the reasons behind the numbers, only where they fit what the data shows; skip a note the data doesn't bear out. Put them in your own words for this hand, don't copy them, and never call them notes or mention that they were given. They are principles, not results: every number still comes from "hand".
 - Use only facts about seats and positions that the data gives. Don't describe earlier action that isn't in preflop.decisions.
 - Explain the reasons, not just the numbers: range and nut advantage from the buckets, which buckets bet for value, which bluff and which check, why a size was used (small with a range advantage, large and polarized with a nut advantage), position, SPR, and when they matter, rake, the ante, and ICM.
 - For each street, say what was actually played and how common that choice was in the range.
@@ -54,6 +57,7 @@ Format:
 ${GLOSSARY}`;
 }
 
-export function explainPrompt(summary: HandSummary): string {
-  return JSON.stringify(summary);
+/** The hand's numbers, with the concept notes its features call for in the reader's language (lib/explain/knowledge). */
+export function explainPrompt(summary: HandSummary, language: ExplainLanguage): string {
+  return JSON.stringify({ hand: summary, notes: notesForHand(summary, language) });
 }

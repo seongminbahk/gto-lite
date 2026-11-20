@@ -18,7 +18,7 @@ export function streamExplanation(summary: HandSummary, language: ExplainLanguag
     {
       model: options.model ?? EXPLAIN_MODEL,
       system: explainInstructions(language, summary.streets.map((s) => s.street)),
-      messages: [{ role: "user", content: explainPrompt(summary) }],
+      messages: [{ role: "user", content: explainPrompt(summary, language) }],
       max_tokens: MAX_OUTPUT_TOKENS,
       thinking: { type: "disabled" },
     },

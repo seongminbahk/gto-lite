@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { explainInstructions, explainLanguage } from "./prompt";
+import { SAMPLE_SUMMARY } from "./explainTestUtils";
+import { PROMPT_VERSION, explainInstructions, explainLanguage, explainPrompt } from "./prompt";
 
 describe("explainLanguage", () => {
   it("answers in Korean only when the page asks for it", () => {
@@ -27,5 +28,21 @@ describe("explainInstructions", () => {
 
   it("tells the model how to treat a range the user entered", () => {
     expect(explainInstructions("en", ["Flop"])).toMatch(/rangesEditedBy[^]*entered by the user/);
+  });
+});
+
+describe("explainPrompt", () => {
+  it("sends the hand with concept notes in the reader's language only", () => {
+    const en = JSON.parse(explainPrompt(SAMPLE_SUMMARY, "en"));
+    const ko = JSON.parse(explainPrompt(SAMPLE_SUMMARY, "ko"));
+    expect(en.hand).toEqual(SAMPLE_SUMMARY);
+    expect(en.notes.length).toBeGreaterThan(0);
+    expect(en.notes.every((n: { text: string }) => !/[가-힣]/.test(n.text))).toBe(true);
+    expect(ko.notes.every((n: { text: string }) => /[가-힣]/.test(n.text))).toBe(true);
+  });
+
+  it("tells the model the notes are principles, and invalidates explanations cached before them", () => {
+    expect(explainInstructions("en", ["Flop"])).toMatch(/"notes"[^]*every number still comes from "hand"/);
+    expect(PROMPT_VERSION).toBe(4);
   });
 });
