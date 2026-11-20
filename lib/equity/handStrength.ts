@@ -48,6 +48,9 @@ export interface PlayabilityDepth {
   suitedBroadwayExtra?: number;
 }
 
+/** Added to a depth's bonuses for one kind of decision (a 3-bet pot ranks hands differently from a single-raised one). */
+export type PlayabilityShift = Partial<Pick<PlayabilityDepth, "smallPairExtra" | "suitedConnectorExtra" | "offsuitExtra" | "suitedBroadwayExtra">>;
+
 /** The bonuses as they are. */
 export const BASE_PLAYABILITY: PlayabilityDepth = { bonusScale: 1, smallPairExtra: 0, suitedConnectorExtra: 0 };
 

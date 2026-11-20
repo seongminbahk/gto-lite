@@ -1,5 +1,5 @@
 import type { EquityMatrix } from "@/lib/equity/loadEquityMatrix";
-import { BASE_PLAYABILITY, computePlayabilityRanking, computeRangePlayabilityRanking, playabilityAt, type PlayabilityDepth } from "@/lib/equity/handStrength";
+import { BASE_PLAYABILITY, computePlayabilityRanking, computeRangePlayabilityRanking, playabilityAt, type PlayabilityDepth, type PlayabilityShift } from "@/lib/equity/handStrength";
 import { ALL_HANDS } from "@/lib/handRange/handList";
 import { solvePushFold, type PushFoldResult } from "@/lib/nashSolver/pushFoldSolver";
 import { BB_ANTE_BB, BIG_BLIND_BB, SMALL_BLIND_BB } from "./constants";
@@ -42,11 +42,18 @@ export function getRangePlayabilityRanking(
   range: ReadonlyMap<string, number>,
   weight: number,
   effectiveStackBb?: number,
-  shift?: Pick<PlayabilityDepth, "offsuitExtra" | "suitedBroadwayExtra">,
+  shift?: PlayabilityShift,
   suitedConnectorGain = 0,
 ): Map<string, number> {
   const atDepth = effectiveStackBb === undefined ? BASE_PLAYABILITY : playabilityAt(effectiveStackBb);
-  const depth: PlayabilityDepth = { ...atDepth, ...shift, suitedConnectorExtra: atDepth.suitedConnectorExtra + suitedConnectorGain };
+  // Every shift adds to the depth's own bonuses.
+  const depth: PlayabilityDepth = {
+    ...atDepth,
+    smallPairExtra: atDepth.smallPairExtra + (shift?.smallPairExtra ?? 0),
+    suitedConnectorExtra: atDepth.suitedConnectorExtra + suitedConnectorGain + (shift?.suitedConnectorExtra ?? 0),
+    offsuitExtra: (atDepth.offsuitExtra ?? 0) + (shift?.offsuitExtra ?? 0),
+    suitedBroadwayExtra: (atDepth.suitedBroadwayExtra ?? 0) + (shift?.suitedBroadwayExtra ?? 0),
+  };
   const rangeKey = ALL_HANDS.map((h) => range.get(h.hand) ?? 0).join(",");
   const key = `${weight}|${depth.bonusScale}|${depth.smallPairExtra}|${depth.suitedConnectorExtra}|${depth.offsuitExtra ?? 0}|${depth.suitedBroadwayExtra ?? 0}|${rangeKey}`;
   let byKey = rangeRankingsByMatrix.get(matrix);

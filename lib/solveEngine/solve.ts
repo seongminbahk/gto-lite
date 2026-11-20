@@ -295,7 +295,8 @@ function facingRaiseRanking(ctx: FacingRaiseContext): Map<string, number> {
   if (ctx.potState.raiseDepth >= 2 && reraiseWeight > 0 && hasVillainRange) {
     // Only against a blind's 3-bet: an in-position 3-bettor's tighter range has the reference flatting small pairs and 4-betting suited broadways instead.
     const blindRaiser = ctx.potState.raiseDepth === 2 && (ctx.lastAggressor === "SB" || ctx.lastAggressor === "BB");
-    return getRangePlayabilityRanking(ctx.matrix, ctx.villainRange!, reraiseWeight, stack, blindRaiser ? ctx.format.reraisePlayabilityShift : undefined, rakeSuitedConnectorGain(ctx));
+    const shift = blindRaiser ? ctx.format.reraisePlayabilityShift : ctx.potState.raiseDepth === 2 && ctx.ownDecision?.action === "raise" ? ctx.format.reraiseVsInPositionPlayabilityShift : undefined;
+    return getRangePlayabilityRanking(ctx.matrix, ctx.villainRange!, reraiseWeight, stack, shift, rakeSuitedConnectorGain(ctx));
   }
   if (ctx.isBlind && ctx.potState.raiseDepth === 1 && !ctx.ownDecision && hasVillainRange) {
     return getRangePlayabilityRanking(ctx.matrix, ctx.villainRange!, BLIND_DEFENSE_RANGE_EQUITY_WEIGHT, stack, undefined, rakeSuitedConnectorGain(ctx));

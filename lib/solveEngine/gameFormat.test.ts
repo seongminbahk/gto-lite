@@ -180,6 +180,25 @@ describe("rake", () => {
     expect(share("BTN", initialPotState(CASH_8), preset("live"))).toBeGreaterThan(share("BTN", initialPotState(CASH_8), NO_RAKE_SETTINGS));
   });
 
+  it("has a tournament opener flat small pairs against a 3-bet in position, not against a blind's", () => {
+    const facing = (threeBettor: Position) => {
+      const steps: [Position, ActionType][] = [["UTG", "fold"], ["UTG1", "fold"], ["LJ", "fold"], ["HJ", "fold"], ["CO", "raise"]];
+      for (const seat of ["BTN", "SB", "BB"] as Position[]) steps.push([seat, seat === threeBettor ? "raise" : "fold"]);
+      const r = path(TOURNAMENT_8, ...steps);
+      if (r.status !== "active") throw new Error("expected CO to act");
+      return r.potState;
+    };
+    const continues = (state: PotState, hand: string) => {
+      const h = solveActiveSeat(matrix, "CO", state, 100, NO_RAKE_SETTINGS).hands.find((x) => x.hand === hand)!;
+      return 1 - h.fold;
+    };
+    const unshifted: GameFormat = { ...TOURNAMENT_8, reraiseVsInPositionPlayabilityShift: undefined };
+    const vsButton = facing("BTN");
+    expect(continues(vsButton, "22")).toBeGreaterThan(continues({ ...vsButton, format: unshifted }, "22") + 0.5);
+    const vsBb = facing("BB");
+    expect(continues(vsBb, "22")).toBeCloseTo(continues({ ...vsBb, format: unshifted }, "22"), 5);
+  });
+
   it("ranks suited connectors higher with a lighter rake, and only then", () => {
     const toCo = path(CASH_6, ["LJ", "fold"], ["HJ", "fold"]);
     if (toCo.status !== "active") throw new Error("expected CO to act");

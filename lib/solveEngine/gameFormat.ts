@@ -1,5 +1,5 @@
 import type { Position } from "@/types/rangeData";
-import type { PlayabilityDepth } from "@/lib/equity/handStrength";
+import type { PlayabilityDepth, PlayabilityShift } from "@/lib/equity/handStrength";
 import {
   CASH_BB_VS_SB_CONTINUE_FACTOR,
   CASH_BB_VS_SB_THREE_BET_WIDTH_RATIO,
@@ -279,6 +279,8 @@ export interface GameFormat {
    * broadways, which a 3-bet pot treats very differently from a single-raised one.
    */
   reraisePlayabilityShift?: Pick<PlayabilityDepth, "offsuitExtra" | "suitedBroadwayExtra">;
+  /** The same, facing a 3-bet from a seat that isn't a blind (so in position on the opener). */
+  reraiseVsInPositionPlayabilityShift?: PlayabilityShift;
   /** Re-raising a 4-bet or more, as a share of the raiser's range, value and bluffs. Default: as fourBet. */
   fiveBet?: {
     widthRatio: number;
@@ -431,6 +433,12 @@ export const TOURNAMENT_8: GameFormat = {
   // Where the BB bluffs offsuit hands (60bb and shallower), the SB keeps its suited bluffs: offsuit ones flatted
   // 2pp less and folded 5pp more against a 40bb button open than the commercial solver does.
   sbSuitedBluffShare: 1,
+  // Facing a 3-bet from a seat that isn't a blind, the commercial solver's 100bb opener (8-max ChipEV, read
+  // 2026-11-20) flats the small pairs and suited connectors that ours folded, so ours called with a stronger,
+  // broadway-heavy range and the 3-bettor bet the flop after a check less (CO and LJ against a button 3-bet,
+  // 10 flops each, our ranges: 75%/74% against its 84%/88%). With the shift 79%/86%, per-board gap 16/21 →
+  // 8/7pp; preflop per hand those two nodes 82.2/75.3 → 84.1/75.2%, whole trees 100–20bb within ±0.03pp.
+  reraiseVsInPositionPlayabilityShift: { smallPairExtra: 0.1, suitedConnectorExtra: 0.05 },
   playabilityByStack: true,
   reraiseKeepBase: RERAISE_KEEP_BASE,
   fourBet: { widthRatio: THREE_BET_WIDTH_RATIO, valueShare: RAISE_VALUE_SHARE, bluffShare: 0 },
