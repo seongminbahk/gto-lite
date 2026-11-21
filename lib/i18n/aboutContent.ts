@@ -53,7 +53,7 @@ const en: AboutContent = {
       id: "postflop",
       heading: "How postflop is solved",
       paragraphs: [
-        "Postflop is a real solve, not a lookup. A CFR solver compiled to WebAssembly runs on your device, starting from the two ranges that reached the flop, and stops when neither player can gain more than 0.5% of the pot by changing strategy on the tree it solved.",
+        "Postflop is a real solve, not a lookup. A CFR solver compiled to WebAssembly runs on your device, starting from the two ranges that reached the flop, and stops when neither player can gain more than 0.5% of the pot by changing strategy on the tree it solved (0.1% on a 3-bet pot's flop with at most 6 times the pot behind, whose smaller tree solves quickly).",
         "To finish in seconds, the flop solve looks ahead to a sample of turn and river cards with a smaller betting menu, and each street is solved again in full once its card is known. Fast flop looks at fewer cards: quicker and less accurate.",
       ],
     },
@@ -137,7 +137,7 @@ const ko: AboutContent = {
       id: "postflop",
       heading: "포스트플랍을 푸는 방식",
       paragraphs: [
-        "포스트플랍은 미리 만든 표를 찾는 것이 아니라 실제로 풉니다. WebAssembly로 만든 CFR 솔버가 사용자의 기기에서 돌며, 플랍까지 온 두 레인지에서 시작합니다. 푼 트리에서 어느 쪽도 전략을 바꿔 팟의 0.5% 넘게 더 얻을 수 없게 되면 멈춥니다.",
+        "포스트플랍은 미리 만든 표를 찾는 것이 아니라 실제로 풉니다. WebAssembly로 만든 CFR 솔버가 사용자의 기기에서 돌며, 플랍까지 온 두 레인지에서 시작합니다. 푼 트리에서 어느 쪽도 전략을 바꿔 팟의 0.5% 넘게 더 얻을 수 없게 되면 멈춥니다(남은 스택이 팟의 6배 이하인 3벳 팟 플랍은 트리가 작아 빨리 풀리므로 0.1%).",
         "몇 초 안에 끝내기 위해 플랍 솔브는 턴과 리버 카드 일부를 줄인 베팅 메뉴로 내다보고, 카드가 정해지면 그 스트리트를 원래 메뉴로 다시 풉니다. '빠른 플랍'은 카드를 더 적게 봅니다. 더 빠르지만 덜 정확합니다.",
       ],
     },

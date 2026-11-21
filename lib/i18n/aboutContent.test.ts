@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { USER_DAILY_LIMIT } from "@/lib/explain/usage";
 import { NASH_FLAT_STACK_THRESHOLD_BB } from "@/lib/solveEngine/constants";
-import { DEFAULT_TARGET_EXPLOITABILITY_PERCENT } from "@/lib/postflopSolver/cfr";
+import { DEFAULT_TARGET_EXPLOITABILITY_PERCENT, LOW_SPR_FLOP_MAX_SPR, LOW_SPR_TARGET_EXPLOITABILITY_PERCENT } from "@/lib/postflopSolver/cfr";
 import { BET_SIZING } from "@/lib/postflopSolver/betAbstraction";
 import { ALLIN_OPEN_MAX_SPR } from "@/lib/postflopSolver/betAbstraction";
 import { aboutContent } from "./aboutContent";
@@ -40,6 +40,8 @@ describe("aboutContent", () => {
       expect(body).toMatch(new RegExp(`\\b${USER_DAILY_LIMIT}(회| explanations)`));
       expect(body).toContain(`${NASH_FLAT_STACK_THRESHOLD_BB}`);
       expect(body).toContain(`${DEFAULT_TARGET_EXPLOITABILITY_PERCENT}%`);
+      expect(body).toContain(`${LOW_SPR_TARGET_EXPLOITABILITY_PERCENT}%`);
+      expect(body).toMatch(new RegExp(`${LOW_SPR_FLOP_MAX_SPR}(배| times)`));
     }
   });
 });

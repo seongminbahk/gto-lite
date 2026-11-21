@@ -376,7 +376,7 @@ export function PostflopPanel(props: PostflopPanelProps) {
             done={live.state.done}
             total={live.state.total}
             exploitabilityPercent={live.state.exploitabilityPercent}
-            targetExploitabilityPercent={DEFAULT_TARGET_EXPLOITABILITY_PERCENT}
+            targetExploitabilityPercent={live.state.targetExploitabilityPercent ?? DEFAULT_TARGET_EXPLOITABILITY_PERCENT}
           />
         )}
 

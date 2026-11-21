@@ -1,5 +1,5 @@
 import { narrowRangeAlongPath, type TreePathStep } from "@/lib/postflopSolver/rangeNarrowing";
-import { DEFAULT_MAX_CFR_ITERATIONS, DEFAULT_TARGET_EXPLOITABILITY_PERCENT } from "@/lib/postflopSolver/cfr";
+import { DEFAULT_MAX_CFR_ITERATIONS, DEFAULT_TARGET_EXPLOITABILITY_PERCENT, flopTargetExploitabilityPercent } from "@/lib/postflopSolver/cfr";
 import type { RakeStructure } from "@/lib/solveEngine/rake";
 import type { PostflopIcm } from "@/lib/postflopSolver/icmPayoffs";
 import type {
@@ -15,7 +15,7 @@ import { streetLabelForBoardLength, type StreetLabel } from "./streetLabel";
 
 export type SolveState =
   | { kind: "idle" }
-  | { kind: "solving"; phase: PostflopSolvePhase; done: number; total: number; exploitabilityPercent?: number }
+  | { kind: "solving"; phase: PostflopSolvePhase; done: number; total: number; exploitabilityPercent?: number; targetExploitabilityPercent?: number }
   | { kind: "done"; result: PostflopResultMessage }
   | { kind: "error"; message: string };
 
@@ -79,6 +79,8 @@ export function buildStreetSolveRequest(
   };
   if (stageIndex === 0) {
     return {
+      ...solveOptions,
+      targetExploitabilityPercent: flopTargetExploitabilityPercent(inputs.startPot, inputs.effectiveStackBb),
       kind: "canonical",
       board: cards,
       heroHandFrequencies: inputs.heroHands,
@@ -88,7 +90,6 @@ export function buildStreetSolveRequest(
       startPot: inputs.startPot,
       effectiveStackBb: inputs.effectiveStackBb,
       fast: fastFlop,
-      ...solveOptions,
     };
   }
   const prevStage = streets[stageIndex - 1];

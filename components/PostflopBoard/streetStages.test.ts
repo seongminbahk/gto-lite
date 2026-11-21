@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_MAX_CFR_ITERATIONS, DEFAULT_TARGET_EXPLOITABILITY_PERCENT } from "@/lib/postflopSolver/cfr";
+import { DEFAULT_MAX_CFR_ITERATIONS, DEFAULT_TARGET_EXPLOITABILITY_PERCENT, LOW_SPR_TARGET_EXPLOITABILITY_PERCENT } from "@/lib/postflopSolver/cfr";
 import { NO_RAKE } from "@/lib/solveEngine/rake";
 import { MESSAGES } from "@/lib/i18n/messages";
 import type { SerializedChanceNode, SerializedDecisionNode } from "@/types/postflopSolver";
@@ -73,6 +73,18 @@ describe("buildStreetSolveRequest", () => {
       targetExploitabilityPercent: DEFAULT_TARGET_EXPLOITABILITY_PERCENT,
       rake: NO_RAKE,
     });
+  });
+
+  it("solves a 3-bet pot's low-SPR flop to the tighter target, and keeps the default just above it", () => {
+    const threeBetPot = buildStreetSolveRequest([idleStage(3, 86.5)], 0, ["As", "Kd", "Qh"], { ...INPUTS, startPot: 27.5, effectiveStackBb: 86.5 }, false);
+    expect(threeBetPot.targetExploitabilityPercent).toBe(LOW_SPR_TARGET_EXPLOITABILITY_PERCENT);
+    const atLimit = buildStreetSolveRequest([idleStage(3, 60)], 0, ["As", "Kd", "Qh"], { ...INPUTS, startPot: 10, effectiveStackBb: 60 }, false);
+    expect(atLimit.targetExploitabilityPercent).toBe(LOW_SPR_TARGET_EXPLOITABILITY_PERCENT);
+    const above = buildStreetSolveRequest([idleStage(3, 61)], 0, ["As", "Kd", "Qh"], { ...INPUTS, startPot: 10, effectiveStackBb: 61 }, false);
+    expect(above.targetExploitabilityPercent).toBe(DEFAULT_TARGET_EXPLOITABILITY_PERCENT);
+    // A short-stacked single-raised pot has as low an SPR, but a bigger tree for its pot: it keeps the default.
+    const shortSrp = buildStreetSolveRequest([idleStage(3, 28)], 0, ["As", "Kd", "Qh"], { ...INPUTS, startPot: 5.5, effectiveStackBb: 28 }, false);
+    expect(shortSrp.targetExploitabilityPercent).toBe(DEFAULT_TARGET_EXPLOITABILITY_PERCENT);
   });
 
   it("starts a later street from the previous street's ranges, narrowed along the line that closed it", () => {

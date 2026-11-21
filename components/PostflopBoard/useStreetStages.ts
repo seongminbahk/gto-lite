@@ -83,7 +83,7 @@ export function useStreetStages(inputs: StreetSolveInputs) {
     updateStage(stageIndex, (stage) => ({
       ...stage,
       board: request.board,
-      state: { kind: "solving", phase: "equity", done: 0, total: 1 },
+      state: { kind: "solving", phase: "equity", done: 0, total: 1, targetExploitabilityPercent: request.targetExploitabilityPercent },
       currentNode: null,
       path: [],
     }));
@@ -99,7 +99,7 @@ export function useStreetStages(inputs: StreetSolveInputs) {
       signal: controller.signal,
       onProgress: (phase, done, total, exploitabilityPercent) => {
         if (controller.signal.aborted) return;
-        updateStage(stageIndex, (stage) => ({ ...stage, state: { kind: "solving", phase, done, total, exploitabilityPercent } }));
+        updateStage(stageIndex, (stage) => ({ ...stage, state: { kind: "solving", phase, done, total, exploitabilityPercent, targetExploitabilityPercent: request.targetExploitabilityPercent } }));
       },
     })
       .then((result) => {
