@@ -3,10 +3,12 @@
 import { createContext, createElement, useContext, useSyncExternalStore, type ReactNode } from "react";
 import { MESSAGES, type Locale, type Messages } from "./messages";
 import { localePath } from "./paths";
+import { LOCALE_COOKIE } from "./firstVisit";
 
 export { languageSwitchHref, localePath, stripLocale } from "./paths";
 
 const STORAGE_KEY = "gtoLite.locale";
+const COOKIE_MAX_AGE_S = 60 * 60 * 24 * 365;
 const DEFAULT_LOCALE: Locale = "en";
 
 let current: Locale | null = null;
@@ -25,7 +27,14 @@ function readStored(): Locale {
   } catch {
     // Private modes may refuse storage: go by the browser's language.
   }
+  // A choice made before the cookie existed: copy it so the server stops redirecting by language.
+  if ((stored === "ko" || stored === "en") && !document.cookie.includes(`${LOCALE_COOKIE}=`)) writeCookie(stored);
   return pickLocale(stored, window.navigator.language);
+}
+
+/** The server reads the choice from this cookie (see proxy.ts). */
+function writeCookie(locale: Locale) {
+  document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=${COOKIE_MAX_AGE_S}; samesite=lax`;
 }
 
 function subscribe(listener: () => void) {
@@ -49,6 +58,7 @@ export function setLocale(locale: Locale) {
   } catch {
     // Private modes may refuse storage: the choice then lasts until reload.
   }
+  writeCookie(locale);
   listeners.forEach((listener) => listener());
 }
 

@@ -71,3 +71,15 @@ describe("addresses", () => {
     expect(languageSwitchHref("/ko/about", "", "", "ko")).toBeNull();
   });
 });
+
+describe("remembered choice cookie", () => {
+  it("setLocale writes the cookie the proxy reads", async () => {
+    const { setLocale } = await import("./locale");
+    const { LOCALE_COOKIE } = await import("./firstVisit");
+    setLocale("en");
+    expect(document.cookie).toContain(`${LOCALE_COOKIE}=en`);
+    setLocale("ko");
+    expect(document.cookie).toContain(`${LOCALE_COOKIE}=ko`);
+    setLocale("en");
+  });
+});
