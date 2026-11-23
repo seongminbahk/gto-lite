@@ -16,10 +16,17 @@ const rankingsByMatrix = new WeakMap<EquityMatrix, Map<string, Map<string, numbe
 const pushFoldByMatrix = new WeakMap<EquityMatrix, Map<string, PushFoldResult>>();
 
 /** The playability ranking at this effective stack (see playabilityAt); with no stack, the bonuses as they are. */
-export function getPlayabilityRanking(matrix: EquityMatrix, effectiveStackBb?: number, suitedConnectorGain = 0): Map<string, number> {
+export function getPlayabilityRanking(matrix: EquityMatrix, effectiveStackBb?: number, suitedConnectorGain = 0, shift?: PlayabilityShift): Map<string, number> {
   const atDepth = effectiveStackBb === undefined ? BASE_PLAYABILITY : playabilityAt(effectiveStackBb);
-  const depth = { ...atDepth, suitedConnectorExtra: atDepth.suitedConnectorExtra + suitedConnectorGain };
-  const key = `${depth.bonusScale}|${depth.smallPairExtra}|${depth.suitedConnectorExtra}`;
+  const depth: PlayabilityDepth = {
+    ...atDepth,
+    bonusScale: atDepth.bonusScale * (shift?.bonusScaleFactor ?? 1),
+    smallPairExtra: atDepth.smallPairExtra + (shift?.smallPairExtra ?? 0),
+    suitedConnectorExtra: atDepth.suitedConnectorExtra + suitedConnectorGain + (shift?.suitedConnectorExtra ?? 0),
+    offsuitExtra: (atDepth.offsuitExtra ?? 0) + (shift?.offsuitExtra ?? 0),
+    suitedBroadwayExtra: (atDepth.suitedBroadwayExtra ?? 0) + (shift?.suitedBroadwayExtra ?? 0),
+  };
+  const key = `${depth.bonusScale}|${depth.smallPairExtra}|${depth.suitedConnectorExtra}|${depth.offsuitExtra}|${depth.suitedBroadwayExtra}`;
   let byDepth = rankingsByMatrix.get(matrix);
   if (!byDepth) {
     byDepth = new Map();

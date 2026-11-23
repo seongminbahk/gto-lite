@@ -20,6 +20,16 @@ describe("getPlayabilityRanking", () => {
     expect(deep).toEqual(computePlayabilityRanking(matrix, playabilityAt(100)));
     expect(getPlayabilityRanking(matrix, 20)).not.toEqual(deep);
   });
+
+  it("keeps a shifted ranking apart, scaling the bonuses by bonusScaleFactor", () => {
+    const base = getPlayabilityRanking(matrix);
+    const shift = { bonusScaleFactor: 1.5, suitedConnectorExtra: 0.03 };
+    const shifted = getPlayabilityRanking(matrix, undefined, 0, shift);
+    expect(getPlayabilityRanking(matrix, undefined, 0, shift)).toBe(shifted);
+    expect(shifted).toEqual(computePlayabilityRanking(matrix, { bonusScale: 1.5, smallPairExtra: 0, suitedConnectorExtra: 0.03, offsuitExtra: 0, suitedBroadwayExtra: 0 }));
+    expect(shifted.get("54s")!).toBeLessThan(base.get("54s")!);
+    expect(shifted.get("K5o")!).toBeGreaterThan(base.get("K5o")!);
+  });
 });
 
 describe("getPushFoldResult", () => {

@@ -44,10 +44,21 @@ export const RAKE_RELIEF_POT_GROWTH = 3;
 export const RAKE_RELIEF_CONTINUE_GAIN = 6.7;
 /** 4-bets and 5-bets for value narrow by 1 − cut × relief. */
 export const RAKE_RELIEF_RERAISE_CUT = 10;
-/** The SB's first-in raise narrows by 1 − cut × relief on a limped pot... */
-export const RAKE_RELIEF_SB_RAISE_CUT = 5;
-/** ...and the hands it plays widen by 1 + gain × relief. */
+/**
+ * The SB's first-in raise narrows by 1 − cut × relief on a limped pot. With no rake the solver's SB raises
+ * 18% (6-max) and 21% (8-max) of its hands and limps 45–49%; at 5 ours raised 27%. At 11 (2026-11-23):
+ * whole tree no rake 92.33→92.48%, 8-max no rake 92.23→92.28%; a raked game is not lighter on a limped pot.
+ */
+export const RAKE_RELIEF_SB_RAISE_CUT = 11;
+/** The hands the SB plays first in widen by 1 + gain × relief. */
 export const RAKE_RELIEF_SB_PLAY_GAIN = 4;
+/**
+ * 3-bets narrow by 1 − cut × relief. With no rake the solver 3-bets less and flats more (6- and 8-max, read
+ * 2026-11-23): the button against a cutoff open 9.4–9.7% 3-bet / 11–12% flat where ours 3-bet 11.9% / flatted 8%,
+ * the BB against the SB 12–13% where ours 17–20%. Whole tree no rake 92.48→92.55%, 8-max 92.28→92.35%; a single-raised
+ * pot NL50 and up rakes like NL10, so those are unchanged.
+ */
+export const RAKE_RELIEF_THREE_BET_CUT = 4;
 /**
  * Without rake a speculative hand keeps what it wins postflop, so suited connectors rank higher in every range:
  * this much on their playability bonus with no rake, scaled by how much lighter than the default the rake is.

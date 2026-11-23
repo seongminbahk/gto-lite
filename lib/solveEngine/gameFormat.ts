@@ -209,6 +209,8 @@ export interface GameFormat {
   openSizes: { oop: OpenSizeRange; ip: OpenSizeRange; btn: OpenSizeRange; sb: OpenSizeRange };
   reraiseSizes: ReraiseSizes;
   sbCanLimp: boolean;
+  /** Added to the playability ranking the SB first in ranks its hands by. */
+  sbFirstInPlayabilityShift?: PlayabilityShift;
   firstInWidths: readonly FirstInAnchor[];
   threeBetWidthRatio: number;
   /** 3-bet width of a seat that isn't a blind, and of the SB when it differs from the BB's. */
@@ -498,6 +500,13 @@ const CASH_8: GameFormat = {
   // overall +0.2–0.3pp, live 10% rake (which barely limps) −0.1pp. On 12 flops each, flop hand agreement
   // rose: limped pots SB 59.4→85.6%, BB 72.7→83.3%; SB-raised pots SB 67.9→73.0%, BB 83.5→84.0%.
   sbRaiseSpread: 0.75,
+  // The same solver's SB first in (whole preflop trees, read 2026-11-20 and 2026-11-23) plays 54s, 64s, 85s and
+  // 53s, and with no rake 65o–86o too, where ours folded them and played K5o–K6o, J8o and J2s instead: from the
+  // small blind, against one player, how a hand plays counts for more against its all-in equity than from the
+  // other seats. Half again the playability bonuses, and more for the suited connectors: SB first-in hand
+  // agreement NL10 85.9→87.3%, NL50 86.2→88.3%; whole tree NL10 93.48→93.55%, NL50 93.73→93.84%,
+  // NL500 93.60→93.67%, no rake 92.29→92.33%, 8-max no rake 92.22→92.23%.
+  sbFirstInPlayabilityShift: { bonusScaleFactor: 1.5, suitedConnectorExtra: 0.03 },
   sbOpenerKeepFactor: 1.2,
   // The same solver's BB against an SB open (read 2026-11-18) bluffs with A2o–A7o, K8o–K9o, Q9o and the low
   // suited queens and jacks, and flats KQo, KJo, AJo–A9o; an even slice of its candidates 3-bet those

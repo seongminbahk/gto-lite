@@ -123,8 +123,28 @@ describe("cash ranges", () => {
     const sb = solveActiveSeat(matrix, "SB", initialPotState(CASH_8), 100).hands;
     const share = (k: (h: HandFrequency) => number) => sb.reduce((sum, h) => sum + k(h) * HAND_BY_LABEL.get(h.hand)!.combos, 0) / 1326;
     // With no rake the SB limps more and raises less (a commercial solver's 8-max cEV: raise 21%, limp 45%).
-    expect(share((h) => h.raise + (h.allin ?? 0))).toBeCloseTo(0.27, 1);
-    expect(share((h) => h.call)).toBeCloseTo(0.35, 1);
+    expect(share((h) => h.raise + (h.allin ?? 0))).toBeCloseTo(0.16, 1);
+    expect(share((h) => h.call)).toBeCloseTo(0.46, 1);
+  });
+
+  it("has the SB play low suited connectors over unconnected offsuit kings", () => {
+    const sb = solveActiveSeat(matrix, "SB", initialPotState(gameFormatById("cash-6")!), 100, DEFAULT_RAKE_SETTINGS).hands;
+    const played = (hand: string) => {
+      const h = sb.find((x) => x.hand === hand)!;
+      return h.raise + h.call + (h.allin ?? 0);
+    };
+    expect(played("54s")).toBeGreaterThan(0.9);
+    expect(played("K5o")).toBeLessThan(0.1);
+  });
+
+  it("3-bets narrower and flats wider with no rake than at NL10", () => {
+    const facing = replayActionPath([{ actor: "LJ", action: "fold" }, { actor: "HJ", action: "fold" }, { actor: "CO", action: "raise" }], 100, gameFormatById("cash-6")!);
+    if (facing.status !== "active") throw new Error("not active");
+    const btn = (rake: RakeSettings) => solveActiveSeat(matrix, "BTN", facing.potState, 100, rake).hands;
+    const share = (hands: HandFrequency[], k: (h: HandFrequency) => number) => hands.reduce((sum, h) => sum + k(h) * HAND_BY_LABEL.get(h.hand)!.combos, 0) / 1326;
+    const [noRake, nl10] = [btn(NO_RAKE_SETTINGS), btn(DEFAULT_RAKE_SETTINGS)];
+    expect(share(noRake, (h) => h.raise)).toBeLessThan(share(nl10, (h) => h.raise));
+    expect(share(noRake, (h) => h.call)).toBeGreaterThan(share(nl10, (h) => h.call));
   });
 
   it("shares one LJ chart between 6-max and 8-max", () => {

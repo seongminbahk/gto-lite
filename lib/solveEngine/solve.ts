@@ -21,6 +21,7 @@ import {
   RAKE_RELIEF_SB_PLAY_GAIN,
   RAKE_RELIEF_SUITED_CONNECTOR_GAIN,
   RAKE_RELIEF_SB_RAISE_CUT,
+  RAKE_RELIEF_THREE_BET_CUT,
   RERAISE_KEEP_BASE,
 } from "@/lib/heuristicRanges/config";
 import { generateCallShoveScenario, generateVsReraiseScenario, type JamDefense, type VsReraiseParams } from "@/lib/heuristicRanges/vsReraise";
@@ -265,7 +266,10 @@ function solveFirstIn(ctx: SpotContext): SolvedNode {
       sbRaise: a.sbRaise! * Math.max(0, 1 - RAKE_RELIEF_SB_RAISE_CUT * relief),
       sbPlay: a.sbPlay === undefined ? undefined : a.sbPlay * (1 + RAKE_RELIEF_SB_PLAY_GAIN * relief),
     }));
-    return { source: "heuristic-approx", hands: generateSbFirstInScenario(ranking, effectiveStackBb, anchors, format.sbRaiseSpread) };
+    const sbRanking = format.sbFirstInPlayabilityShift
+      ? getPlayabilityRanking(ctx.matrix, format.playabilityByStack ? effectiveStackBb : undefined, rakeSuitedConnectorGain(ctx), format.sbFirstInPlayabilityShift)
+      : ranking;
+    return { source: "heuristic-approx", hands: generateSbFirstInScenario(sbRanking, effectiveStackBb, anchors, format.sbRaiseSpread) };
   }
   return {
     source: "heuristic-approx",
@@ -489,7 +493,8 @@ function facingRaiseParams(ctx: FacingRaiseContext): FacingRaiseParams {
     coldCallIpFactor: format.coldCallIpFactor,
     seatsBehind,
     coldCallPerSeatBehind: ctx.isBlind ? undefined : format.coldCallPerSeatBehind,
-    threeBetWidthRatio: threeBetWidthRatioFor(ctx, blindVsBlind) / (ctx.isBlind ? ctx.allInBubbleFactor : 1),
+    threeBetWidthRatio:
+      (threeBetWidthRatioFor(ctx, blindVsBlind) / (ctx.isBlind ? ctx.allInBubbleFactor : 1)) * Math.max(0, 1 - RAKE_RELIEF_THREE_BET_CUT * calledPotRakeRelief(ctx)),
     coldCallBase: format.coldCallBase,
     coldCallOopMultiplier: format.coldCallOopMultiplier,
     closingContinueFactor: format.closingContinueFactor * (blindVsBlind?.continueFactor ?? 1),
