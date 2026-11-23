@@ -19,9 +19,9 @@ export interface RangeStats {
 }
 
 const MIXED_MIN = 0.05;
-const PLAYED_MIN = 0.5;
+export const PLAYED_MIN = 0.5;
 
-const ROWS: Record<EdgeCategory, string[]> = {
+export const ROWS: Record<EdgeCategory, string[]> = {
   pairs: RANKS.map((r) => `${r}${r}`),
   suitedAces: RANKS.slice(1).map((r) => `A${r}s`),
   offsuitAces: RANKS.slice(1).map((r) => `A${r}o`),

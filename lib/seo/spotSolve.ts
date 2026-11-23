@@ -46,3 +46,27 @@ export function solveSpotPage(page: SpotPage): SolvedSpot {
   const solverQuery = encodeSpot({ settings: { stackBb: page.stackBb, format, rake, icm: CHIP_EV }, path, postflop: EMPTY_LINE }) || `s=${page.stackBb}`;
   return { seat: page.seat, hands, source, potBb: replayed.potState.potBb, path, solverQuery };
 }
+
+export interface NeighborSpot {
+  page: SpotPage;
+  hands: HandFrequency[];
+}
+
+/**
+ * The spots a page compares itself with: the seat before it at the same stack
+ * (the one after, for the first seat), and the next deeper stack for the same
+ * seat (the next shallower one at the deepest).
+ */
+export function spotNeighbors(page: SpotPage): { seat: NeighborSpot | null; stack: NeighborSpot | null } {
+  const def = rangeFormat(page.format);
+  const seatIndex = def.seats.indexOf(page.seat);
+  const otherSeat = def.seats[seatIndex > 0 ? seatIndex - 1 : seatIndex + 1];
+  const stacks = [...def.stacks].sort((a, b) => a - b);
+  const stackIndex = stacks.indexOf(page.stackBb);
+  const otherStack = stacks[stackIndex < stacks.length - 1 ? stackIndex + 1 : stackIndex - 1];
+  const solve = (other: SpotPage): NeighborSpot => ({ page: other, hands: solveSpotPage(other).hands });
+  return {
+    seat: otherSeat ? solve({ ...page, seat: otherSeat }) : null,
+    stack: otherStack !== undefined ? solve({ ...page, stackBb: otherStack }) : null,
+  };
+}

@@ -22,3 +22,21 @@ export function softwareApplicationJsonLd(): Record<string, unknown> {
 export function serializeJsonLd(data: unknown): string {
   return JSON.stringify(data).replace(/</g, "\\u003c");
 }
+
+/** schema.org breadcrumbs: each item a name and an absolute or site-relative address. */
+export function breadcrumbJsonLd(items: { name: string; path: string }[]): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, i) => ({ "@type": "ListItem", position: i + 1, name: item.name, item: new URL(item.path, siteUrl()).toString() })),
+  };
+}
+
+/** schema.org questions and answers, the same ones the page shows. */
+export function faqJsonLd(faq: { question: string; answer: string }[]): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faq.map(({ question, answer }) => ({ "@type": "Question", name: question, acceptedAnswer: { "@type": "Answer", text: answer } })),
+  };
+}

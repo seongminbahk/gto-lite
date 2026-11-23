@@ -38,7 +38,7 @@ describe("range page copy", () => {
 
   it("names the seat, stack and format in both languages", () => {
     expect(rangeCopy("en").title(page, stats)).toBe("BTN Open Range at 20bb — MTT Preflop Chart");
-    expect(rangeCopy("ko").title(page, stats)).toBe("20bb BTN 오픈 레인지 — 토너먼트 프리플랍 차트");
+    expect(rangeCopy("ko").title(page, stats)).toBe("20bb BTN 오픈 레인지 — 홀덤 토너먼트 프리플랍 차트");
     const push = rangeStats(range({ AA: 1 }, "allin"));
     expect(rangeCopy("en").title({ ...page, stackBb: 10 }, push)).toBe("10bb BTN Push/Fold Chart — MTT");
   });
