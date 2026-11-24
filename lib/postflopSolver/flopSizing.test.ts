@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computePostflopAvailableActions } from "./betAbstraction";
-import { EVERY_CANDIDATE, flopMenu, pickSizes } from "./flopSizing";
+import { EVERY_CANDIDATE, flopMenu, pickSizes, shortThreeBetFlop } from "./flopSizing";
 import { applyPostflopAction, initialPostflopPotState } from "./potState";
 
 const use = (third: number, half: number, threeQuarters: number, pot: number) =>
@@ -61,5 +61,16 @@ describe("flopMenu", () => {
   it("names every candidate for both players", () => {
     expect(EVERY_CANDIDATE.P1).toEqual([0.33, 0.5, 0.75, 1.0]);
     expect(EVERY_CANDIDATE.P2).toEqual(EVERY_CANDIDATE.P1);
+  });
+});
+
+describe("shortThreeBetFlop", () => {
+  it("is a 3-bet-sized pot with three pots or fewer behind", () => {
+    // A 40bb tournament 3-bet pot, and a 20bb one.
+    expect(shortThreeBetFlop(19.9, 29.8)).toBe(true);
+    expect(shortThreeBetFlop(11.5, 14)).toBe(true);
+    // A 100bb 3-bet pot is deeper; a short single-raised pot is smaller.
+    expect(shortThreeBetFlop(24.5, 88)).toBe(false);
+    expect(shortThreeBetFlop(5.5, 15)).toBe(false);
   });
 });

@@ -25,6 +25,22 @@ describe("toSolveInput", () => {
     expect(input.villainActionWeight(hand)).toBe(0);
   });
 
+  it("names the preflop aggressor when one range entered on a raise and the other on a call", () => {
+    const hand = { hand: "AKs", fold: 0, call: 1, raise: 0 };
+    const request = (heroActionKey: "call" | "raise" | "allin", villainActionKey: "call" | "raise" | "allin"): PostflopSolveRequest => ({
+      ...COMMON,
+      kind: "canonical",
+      heroHandFrequencies: [hand],
+      heroActionKey,
+      villainHandFrequencies: [hand],
+      villainActionKey,
+    });
+    expect(toSolveInput(request("raise", "call"))).toMatchObject({ preflopAggressor: "P1" });
+    expect(toSolveInput(request("call", "allin"))).toMatchObject({ preflopAggressor: "P2" });
+    expect(toSolveInput(request("call", "call")).preflopAggressor).toBeUndefined();
+    expect(toSolveInput(request("raise", "raise")).preflopAggressor).toBeUndefined();
+  });
+
   it("passes a combos request through as it is", () => {
     const request: PostflopSolveRequest = {
       ...COMMON,

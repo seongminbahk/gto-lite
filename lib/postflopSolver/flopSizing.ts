@@ -1,5 +1,5 @@
 import { BET_SIZING, type StreetBetSizing } from "./betAbstraction";
-import type { CfrSolution } from "./cfr";
+import { LOW_SPR_FLOP_MIN_POT_BB, type CfrSolution } from "./cfr";
 import { totalPot, type PostflopPlayer, type PostflopPotState } from "./potState";
 import type { DecisionNode, PostflopTreeNode } from "./treeBuilder";
 import type { ComboRange } from "./types";
@@ -24,6 +24,26 @@ const SIZE_PAIRS = [
 
 /** A player betting less often than this keeps one size: how sizes barely used rank is noise. */
 export const RARE_BET = 0.1;
+
+/**
+ * In a short-stacked 3-bet pot (SHORT_THREE_BET_MAX_SPR), the preflop
+ * aggressor bets these instead of the picked pair; the caller keeps its pick.
+ * A commercial solver's 40bb and 20bb tournament 3-bet pots c-bet mostly 10%
+ * and 25% of the pot, below the 33% candidate: on 12 flops each of four 40bb
+ * spots with its ranges, the 3-bettor bet 50–71% where it bets 69–84%. On two
+ * of them (8 flops each, Node 10 threads) the per-flop gap went 17/19 → 10/7
+ * points with 25/50%, for 1.73 → 1.90s a flop; 10/25/50% did 9/6 for 2.80s.
+ * The small sizes for both players made the caller donk 21–34% instead of at
+ * most 14%. Either way EV moved under 0.1bb.
+ */
+export const SHORT_THREE_BET_AGGRESSOR_SIZES = [0.25, 0.5];
+/** At most this many pots behind; a 100bb 3-bet pot starts at 3.5 or more. */
+export const SHORT_THREE_BET_MAX_SPR = 3;
+
+/** A 3-bet-sized pot with SHORT_THREE_BET_MAX_SPR pots or fewer behind. */
+export function shortThreeBetFlop(startPotBb: number, effectiveStackBb: number): boolean {
+  return startPotBb >= LOW_SPR_FLOP_MIN_POT_BB && effectiveStackBb / startPotBb <= SHORT_THREE_BET_MAX_SPR;
+}
 
 /** Each player's opening bet sizes. */
 export type OpenSizes = Record<PostflopPlayer, number[]>;

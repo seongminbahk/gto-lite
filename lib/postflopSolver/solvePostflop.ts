@@ -1,10 +1,11 @@
 import type { HandFrequency } from "@/types/rangeData";
 import type { PostflopSolvePhase } from "@/types/postflopSolver";
 import type { BoardCards, ComboRange } from "./types";
+import type { PostflopPlayer } from "./potState";
 import { expandToCombos, filterBlockedCombos } from "./combos";
 import { buildEquityTable, type EquityTable } from "./terminalEquity";
 import { LOOKAHEAD_BET_SIZING, offersOpeningAllin, TURN_RIVER_LOOKAHEAD, streetForBoardLength, streetMenu, type PostflopStreet } from "./betAbstraction";
-import { EVERY_CANDIDATE, flopMenu, pickFlopSizes } from "./flopSizing";
+import { EVERY_CANDIDATE, flopMenu, pickFlopSizes, SHORT_THREE_BET_AGGRESSOR_SIZES, shortThreeBetFlop } from "./flopSizing";
 import { clusteredNextCards, stratifiedNextCards } from "./nextCardSampling";
 import { buildHandTree, buildStreetTree, type HandTreeOptions, type PostflopTreeNode } from "./treeBuilder";
 import type { CfrSolution } from "./cfr";
@@ -31,6 +32,8 @@ interface PostflopSolveInputCommon {
   rake?: RakeTerms;
   /** A tournament hand: pay terminals in prize money (icmPayoffs.ts). Omit for chip EV. */
   icm?: PostflopIcm;
+  /** Flop only: who made the last preflop raise, when the other only called — see SHORT_THREE_BET_AGGRESSOR_SIZES. */
+  preflopAggressor?: PostflopPlayer;
 }
 
 export type PostflopSolveInput =
@@ -216,7 +219,9 @@ function solveWithTables(
     // Nothing to pick when both players are already all-in.
     if (everySize.type === "decision") {
       const pass = solveLookahead(everySize, "sizes");
-      firstStreetSizing = flopMenu(pickFlopSizes(everySize, pass.solution, heroRange, villainRange), allinOpen);
+      const open = pickFlopSizes(everySize, pass.solution, heroRange, villainRange);
+      if (input.preflopAggressor && shortThreeBetFlop(input.startPot, input.effectiveStackBb)) open[input.preflopAggressor] = SHORT_THREE_BET_AGGRESSOR_SIZES;
+      firstStreetSizing = flopMenu(open, allinOpen);
       pass.dispose();
     }
   }

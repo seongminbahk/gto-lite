@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { ALL_HANDS } from "@/lib/handRange/handList";
 import type { HandFrequency } from "@/types/rangeData";
-import { FLOP_BET_CANDIDATES } from "./flopSizing";
+import { FLOP_BET_CANDIDATES, SHORT_THREE_BET_AGGRESSOR_SIZES } from "./flopSizing";
 import { lookaheadOptions, solvePostflopStreet } from "./solvePostflop";
 import { LOOKAHEAD_BET_SIZING, TURN_RIVER_LOOKAHEAD } from "./betAbstraction";
 import type { DecisionNode } from "./treeBuilder";
@@ -215,6 +215,21 @@ describe("solvePostflopStreet — a flop's bet sizes", () => {
     expect(root.actions.at(-1)!.action).toBe("allin");
     expect((root.actions[0].child as DecisionNode).actions.at(-1)!.action).toBe("allin");
     result.session?.dispose();
+  });
+
+  it("gives a short 3-bet pot's preflop aggressor the small sizes, and leaves the caller its pick", async () => {
+    const solver = await loadNodeSolverModule();
+    const short = solvePostflopStreet({ ...flop(25), preflopAggressor: "P2" }, { solver });
+    const root = short.tree as DecisionNode;
+    const afterCheck = root.actions[0].child as DecisionNode;
+    expect(betFractions(afterCheck)).toEqual(SHORT_THREE_BET_AGGRESSOR_SIZES);
+    for (const size of betFractions(root)) expect(FLOP_BET_CANDIDATES).toContain(size);
+    short.session?.dispose();
+
+    // Deeper than three pots, the aggressor keeps its pick too.
+    const deep = solvePostflopStreet({ ...flop(40), preflopAggressor: "P2" }, { solver });
+    for (const size of betFractions((deep.tree as DecisionNode).actions[0].child as DecisionNode)) expect(FLOP_BET_CANDIDATES).toContain(size);
+    deep.session?.dispose();
   });
 
   it("leaves the turn's bet sizes alone", async () => {
