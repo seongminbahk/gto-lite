@@ -41,10 +41,10 @@ describe("range page questions", () => {
     expect(faq.map((f) => f.question)).toEqual([
       "How often does the CO open at 100bb in 6-Max Cash?",
       "Should the CO open AJo at 100bb?",
-      "How does the CO range change between 40bb and 100bb?",
+      "How does the CO change between 40bb and 100bb?",
     ]);
     expect(faq[1].answer).toContain("ATo, the next one down, is folded.");
-    expect(faq[2].answer).toBe("Compared with the CO at 40bb, at 100bb the CO adds 1 hand (AJo) and drops none.");
+    expect(faq[2].answer).toBe("Compared with the CO at 40bb, the CO at 100bb adds 1 hand (AJo) and drops none.");
     const ko = rangeCopy("ko").faq(page, stats, edgeQuestions(hands), stackComparison);
     expect(ko[1].question).toBe("100bb CO에서 AJo를 오픈해야 하나요?");
     expect(ko[2].answer).toBe("40bb CO 대비 100bb CO: 1개 핸드 추가(AJo), 제외 없음.");

@@ -6,6 +6,9 @@ import { SITE_NAME, siteUrl } from "@/lib/siteUrl";
 import { rangeCopy } from "./rangeCopy";
 import { siteCopy } from "./siteCopy";
 import { RANGES_INDEX_PATH, spotPath, type SpotPage } from "./spotPages";
+import { LEARN_COPY, LEARN_PATH } from "./learnContent";
+import { flopCopy } from "./flopCopy";
+import { FLOPS_INDEX_PATH, flopPath, type FlopBoardData, type FlopPage } from "./flopPages";
 import type { RangeStats } from "./spotSummary";
 
 const OG_LOCALE: Record<Locale, string> = { en: "en_US", ko: "ko_KR" };
@@ -80,4 +83,19 @@ export function rangesIndexMetadata(locale: Locale): Metadata {
 export function spotMetadata(locale: Locale, page: SpotPage, stats: RangeStats): Metadata {
   const copy = rangeCopy(locale);
   return pageMetadata(locale, spotPath(page), copy.title(page, stats), copy.description(page, stats));
+}
+
+export function learnMetadata(locale: Locale): Metadata {
+  const { title, description } = LEARN_COPY[locale];
+  return pageMetadata(locale, LEARN_PATH, title, description);
+}
+
+export function flopsIndexMetadata(locale: Locale): Metadata {
+  const { title, description } = flopCopy(locale).index;
+  return pageMetadata(locale, FLOPS_INDEX_PATH, title, description);
+}
+
+export function flopMetadata(locale: Locale, page: FlopPage, data: FlopBoardData): Metadata {
+  const copy = flopCopy(locale);
+  return pageMetadata(locale, flopPath(page), copy.title(page), copy.description(page, data));
 }

@@ -32,8 +32,8 @@ describe("range page copy", () => {
 
   it("writes a different summary for different ranges", () => {
     const other = rangeStats(range({ AA: 1 }));
-    expect(rangeCopy("en").summary(page, stats, "heuristic-approx")).not.toEqual(rangeCopy("en").summary(page, other, "heuristic-approx"));
-    expect(rangeCopy("en").summary(page, stats, "heuristic-approx")[1]).toBe("It plays pairs down to 22 and suited aces down to A2s.");
+    expect(rangeCopy("en").summary(page, stats, { source: "heuristic-approx" })).not.toEqual(rangeCopy("en").summary(page, other, { source: "heuristic-approx" }));
+    expect(rangeCopy("en").summary(page, stats, { source: "heuristic-approx" })[1]).toBe("It plays pairs down to 22 and suited aces down to A2s.");
   });
 
   it("names the seat, stack and format in both languages", () => {

@@ -6,7 +6,7 @@ import { formatPercent } from "@/lib/format";
 import { breadcrumbJsonLd, faqJsonLd, serializeJsonLd } from "@/lib/seo/jsonLd";
 import { rangeCopy, type SpotComparison } from "@/lib/seo/rangeCopy";
 import { edgeQuestions, mixedHandShares, rangeDiff } from "@/lib/seo/spotInsights";
-import { otherSeats, otherStacks, RANGES_INDEX_PATH, spotPath, type SpotPage } from "@/lib/seo/spotPages";
+import { otherSeats, otherStacks, relatedSpots, RANGES_INDEX_PATH, spotPath, type SpotPage } from "@/lib/seo/spotPages";
 import type { NeighborSpot, SolvedSpot } from "@/lib/seo/spotSolve";
 import { rangeStats } from "@/lib/seo/spotSummary";
 import { PageChrome } from "./PageChrome";
@@ -56,7 +56,7 @@ export function RangeSpotPage({
 
       <div className="flex flex-col gap-3">
         <h1 className="text-xl font-semibold tracking-tight text-ink">{copy.heading(page, stats)}</h1>
-        {copy.summary(page, stats, solved.source).map((line) => (
+        {copy.summary(page, stats, { source: solved.source, openToBb: solved.openToBb }).map((line) => (
           <p key={line} className="text-base text-ink-muted">
             {line}
           </p>
@@ -78,7 +78,7 @@ export function RangeSpotPage({
         <p className="text-sm text-ink-muted">{copy.rangeTextHint}</p>
         {texts.map(({ action, text }) => (
           <div key={action} className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-ink">{copy.actionName[action]}</span>
+            <span className="text-sm font-medium text-ink">{copy.actionName(page.kind)[action]}</span>
             <pre className="select-all whitespace-pre-wrap break-words rounded border border-line bg-surface p-2 font-mono text-sm text-ink">{text}</pre>
           </div>
         ))}
@@ -91,7 +91,7 @@ export function RangeSpotPage({
             <p key={spotPath(c.other)} className="text-sm text-ink-muted">
               {copy.compareLine(page, c)}{" "}
               <Link href={href(spotPath(c.other))} className="text-accent underline-offset-2 hover:underline">
-                {c.other.seat !== page.seat ? c.other.seat : `${c.other.stackBb}bb`}
+                {c.other.stackBb !== page.stackBb ? `${c.other.stackBb}bb` : copy.seatChip(c.other)}
               </Link>
             </p>
           ))}
@@ -122,8 +122,9 @@ export function RangeSpotPage({
         ))}
       </section>
 
-      <SpotLinks heading={copy.otherStacks(page.seat)} pages={otherStacks(page)} label={(p) => `${p.stackBb}bb`} href={href} />
-      <SpotLinks heading={copy.otherSeats(page.stackBb)} pages={otherSeats(page)} label={(p) => p.seat} href={href} />
+      <SpotLinks heading={copy.related(page)} pages={relatedSpots(page)} label={copy.relatedChip} href={href} />
+      <SpotLinks heading={copy.otherStacks(page)} pages={otherStacks(page)} label={(p) => `${p.stackBb}bb`} href={href} />
+      <SpotLinks heading={copy.otherSeats(page)} pages={otherSeats(page)} label={copy.seatChip} href={href} />
     </PageChrome>
   );
 }

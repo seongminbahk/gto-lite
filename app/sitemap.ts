@@ -3,6 +3,9 @@ import type { Locale } from "@/lib/i18n/messages";
 import { localePath } from "@/lib/i18n/paths";
 import { RANGES_INDEX_PATH, allSpotPages, spotPath } from "@/lib/seo/spotPages";
 import { siteUrl } from "@/lib/siteUrl";
+import { LEARN_PATH } from "@/lib/seo/learnContent";
+import { allFlopPages, FLOPS_INDEX_PATH, flopPath } from "@/lib/seo/flopPages";
+import { FLOP_DATA } from "@/lib/seo/flopData";
 
 type Page = { path: string; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"]; priority: number };
 
@@ -13,7 +16,10 @@ const PAGES: Page[] = [
   { path: "/", changeFrequency: "weekly", priority: 1 },
   { path: "/about", changeFrequency: "monthly", priority: 0.6 },
   { path: RANGES_INDEX_PATH, changeFrequency: "monthly", priority: 0.8 },
+  { path: LEARN_PATH, changeFrequency: "monthly", priority: 0.7 },
+  { path: FLOPS_INDEX_PATH, changeFrequency: "monthly", priority: 0.8 },
   ...allSpotPages().map((page): Page => ({ path: spotPath(page), changeFrequency: "monthly", priority: 0.7 })),
+  ...allFlopPages(FLOP_DATA).map((page): Page => ({ path: flopPath(page), changeFrequency: "monthly", priority: 0.7 })),
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

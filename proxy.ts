@@ -18,5 +18,5 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // English pages only: not /ko, the API, Next's files or anything with a file extension.
-  matcher: ["/", "/about", "/ranges/:path*"],
+  matcher: ["/", "/about", "/learn", "/ranges/:path*", "/flops/:path*"],
 };

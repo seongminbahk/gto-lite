@@ -1,3 +1,5 @@
+import { allFlopPages } from "@/lib/seo/flopPages";
+import { FLOP_DATA } from "@/lib/seo/flopData";
 import { describe, expect, it } from "vitest";
 import { allSpotPages } from "@/lib/seo/spotPages";
 import sitemap from "./sitemap";
@@ -7,7 +9,7 @@ describe("sitemap", () => {
     const entries = sitemap();
     const urls = entries.map((e) => new URL(e.url).pathname);
     expect(urls.slice(0, 6)).toEqual(["/", "/ko", "/about", "/ko/about", "/ranges", "/ko/ranges"]);
-    expect(entries).toHaveLength(2 * (3 + allSpotPages().length));
+    expect(entries).toHaveLength(2 * (5 + allSpotPages().length + allFlopPages(FLOP_DATA).length));
     expect(urls).toContain("/ranges/mtt/20bb/btn-open");
     expect(urls).toContain("/ko/ranges/cash-6max/100bb/co-open");
     const koAbout = entries.find((e) => e.url.endsWith("/ko/about"))!;

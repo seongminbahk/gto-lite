@@ -40,3 +40,15 @@ export function faqJsonLd(faq: { question: string; answer: string }[]): Record<s
     mainEntity: faq.map(({ question, answer }) => ({ "@type": "Question", name: question, acceptedAnswer: { "@type": "Answer", text: answer } })),
   };
 }
+
+/** schema.org glossary: the page's terms, each anchored on the page by its id. */
+export function definedTermSetJsonLd(name: string, path: string, terms: { id: string; name: string; description: string }[]): Record<string, unknown> {
+  const url = new URL(path, siteUrl()).toString();
+  return {
+    "@context": "https://schema.org",
+    "@type": "DefinedTermSet",
+    name,
+    url,
+    hasDefinedTerm: terms.map((t) => ({ "@type": "DefinedTerm", name: t.name, description: t.description, url: `${url}#${t.id}` })),
+  };
+}
