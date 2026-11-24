@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { serializeJsonLd, softwareApplicationJsonLd } from "./jsonLd";
+import { serializeJsonLd, softwareApplicationJsonLd, websiteJsonLd } from "./jsonLd";
 
 describe("softwareApplicationJsonLd", () => {
   it("serializes to valid JSON describing a free web app in two languages", () => {
@@ -14,6 +14,12 @@ describe("softwareApplicationJsonLd", () => {
       offers: { "@type": "Offer", price: "0" },
     });
     expect(parsed.url).toMatch(/^https?:\/\//);
+  });
+
+  it("names the site for search results, at the home page's address", () => {
+    const site = websiteJsonLd();
+    expect(site).toMatchObject({ "@type": "WebSite", name: "gtoLite" });
+    expect(site.url).toMatch(/^https?:\/\/[^/]+\/$/);
   });
 
   it("escapes < so a string can't close the script tag", () => {

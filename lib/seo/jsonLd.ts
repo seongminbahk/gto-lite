@@ -18,6 +18,21 @@ export function softwareApplicationJsonLd(): Record<string, unknown> {
   };
 }
 
+/**
+ * schema.org WebSite: the name Google shows above a result. Without it Google
+ * may fall back to the host's name, which on a vercel.app address is "Vercel".
+ */
+export function websiteJsonLd(): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    alternateName: ["GTO Lite", "gto lite"],
+    url: `${siteUrl()}/`,
+    inLanguage: ["en", "ko"],
+  };
+}
+
 /** JSON for a <script type="application/ld+json">, with `<` escaped so no string in it can close the tag. */
 export function serializeJsonLd(data: unknown): string {
   return JSON.stringify(data).replace(/</g, "\\u003c");
