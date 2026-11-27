@@ -25,8 +25,9 @@ export function getPlayabilityRanking(matrix: EquityMatrix, effectiveStackBb?: n
     suitedConnectorExtra: atDepth.suitedConnectorExtra + suitedConnectorGain + (shift?.suitedConnectorExtra ?? 0),
     offsuitExtra: (atDepth.offsuitExtra ?? 0) + (shift?.offsuitExtra ?? 0),
     suitedBroadwayExtra: (atDepth.suitedBroadwayExtra ?? 0) + (shift?.suitedBroadwayExtra ?? 0),
+    topEquityExtra: (atDepth.topEquityExtra ?? 0) + (shift?.topEquityExtra ?? 0),
   };
-  const key = `${depth.bonusScale}|${depth.smallPairExtra}|${depth.suitedConnectorExtra}|${depth.offsuitExtra}|${depth.suitedBroadwayExtra}`;
+  const key = `${depth.bonusScale}|${depth.smallPairExtra}|${depth.suitedConnectorExtra}|${depth.offsuitExtra}|${depth.suitedBroadwayExtra}|${depth.topEquityExtra}`;
   let byDepth = rankingsByMatrix.get(matrix);
   if (!byDepth) {
     byDepth = new Map();

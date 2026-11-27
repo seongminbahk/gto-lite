@@ -46,10 +46,12 @@ export interface PlayabilityDepth {
   offsuitExtra?: number;
   /** Added to suited hands with both cards ten or higher. */
   suitedBroadwayExtra?: number;
+  /** Added to the 15% of hands (by combos) with the most equity against a random hand. */
+  topEquityExtra?: number;
 }
 
 /** Added to a depth's bonuses for one kind of decision (a 3-bet pot ranks hands differently from a single-raised one). */
-export type PlayabilityShift = Partial<Pick<PlayabilityDepth, "smallPairExtra" | "suitedConnectorExtra" | "offsuitExtra" | "suitedBroadwayExtra">> & {
+export type PlayabilityShift = Partial<Pick<PlayabilityDepth, "smallPairExtra" | "suitedConnectorExtra" | "offsuitExtra" | "suitedBroadwayExtra" | "topEquityExtra">> & {
   /** Multiplies the depth's bonusScale (getPlayabilityRanking only). */
   bonusScaleFactor?: number;
 };
@@ -124,8 +126,17 @@ function depthBonus(h: CanonicalHand, depth: PlayabilityDepth): number {
  * Push/fold doesn't use it, since its hands never play postflop.
  */
 export function computePlayabilityRanking(matrix: EquityMatrix, depth: PlayabilityDepth = BASE_PLAYABILITY): Map<string, number> {
-  return percentilesOf(ALL_HANDS.map((h) => ({ hand: h, score: equityVsRandom(matrix, h.hand) + depthBonus(h, depth) })));
+  const topEquity = depth.topEquityExtra ? percentilesOf(ALL_HANDS.map((h) => ({ hand: h, score: equityVsRandom(matrix, h.hand) }))) : undefined;
+  return percentilesOf(
+    ALL_HANDS.map((h) => ({
+      hand: h,
+      score: equityVsRandom(matrix, h.hand) + depthBonus(h, depth) + (topEquity && topEquity.get(h.hand)! < TOP_EQUITY_SHARE ? depth.topEquityExtra! : 0),
+    })),
+  );
 }
+
+/** The share of hands topEquityExtra goes to. */
+const TOP_EQUITY_SHARE = 0.15;
 
 /**
  * The playability ranking with `weight` of the equity taken against `range`

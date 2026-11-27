@@ -194,6 +194,18 @@ export interface FirstInAnchor {
 }
 
 /** The rules and range tuning of one kind of game. */
+/** Per hand class, how much more often than the plain rule a hand of that class 3-bets; 1 when left out. */
+export interface ThreeBetClassWeights {
+  /** AKo–ATo, KQo, KJo. */
+  offsuitBroadway?: number;
+  /** 22–55. */
+  smallPair?: number;
+  /** 66–99. */
+  middlePair?: number;
+  /** Suited hands with both cards ten or higher. */
+  suitedBroadway?: number;
+}
+
 export interface GameFormat {
   id: GameFormatId;
   label: string;
@@ -211,6 +223,13 @@ export interface GameFormat {
   sbCanLimp: boolean;
   /** Added to the playability ranking the SB first in ranks its hands by. */
   sbFirstInPlayabilityShift?: PlayabilityShift;
+  /**
+   * A seat that isn't a blind, facing a lone open, 3-bets each hand class this many times as often, the node's
+   * 3-bet total kept (pairs TT and up stay as they are). At these stacks, interpolated between them, flat outside.
+   */
+  coldThreeBetClassWeightsByStack?: readonly ({ stackBb: number } & ThreeBetClassWeights)[];
+  /** Added to the ranking a seat before the blinds opens by, at these stacks: interpolated between them, flat outside. */
+  openPlayabilityShiftByStack?: readonly ({ stackBb: number } & PlayabilityShift)[];
   firstInWidths: readonly FirstInAnchor[];
   threeBetWidthRatio: number;
   /** 3-bet width of a seat that isn't a blind, and of the SB when it differs from the BB's. */
@@ -218,10 +237,15 @@ export interface GameFormat {
   sbThreeBetWidthRatio?: number;
   coldCallBase: number;
   coldCallOopMultiplier: number;
-  /** Flats facing an open someone already called, per caller: in position on hero, and not. */
-  overcallFactor: { ipCaller: number; oopCaller: number };
+  /**
+   * Flats facing an open someone already called, per caller: in position on hero, and not; `nonBlind`
+   * once more when hero isn't a blind (default 1).
+   */
+  overcallFactor: { ipCaller: number; oopCaller: number; nonBlind?: number };
   /** Facing a squeeze, the share kept of what's kept against a plain 3-bet: by the opener, and by a seat that called it. */
   squeezeKeepFactor: { opener: number; caller: number };
+  /** Facing a 4-bet with another raiser still to act behind or before it (a cold 4-bet), the share kept of what's otherwise kept; default 1. */
+  coldFourBetKeepFactor?: number;
   /** A seat whose last action was a call re-raises at most this share of what it keeps. */
   calledReraiseShareCap: number;
   /** Multiplies what a seat closing the action (the BB) continues with against an open. */
@@ -426,14 +450,46 @@ export const TOURNAMENT_8: GameFormat = {
   nonBlindThreeBetWidthRatio: THREE_BET_WIDTH_RATIO,
   coldCallBase: COLD_CALL_BASE,
   coldCallOopMultiplier: COLD_CALL_OOP_MULTIPLIER,
-  overcallFactor: { ipCaller: 1, oopCaller: 1 },
-  squeezeKeepFactor: { opener: 1, caller: 1 },
+  // Fitted on the commercial solver's whole 20/40/100bb trees (8-max ChipEV, 2026-11-25) and checked on the
+  // 15/25/30/50/60/80bb ones, none worse: overcalling behind an in-position caller and continuing against a
+  // squeeze were both too wide (an opener facing a squeeze kept its full range). The 20–100bb fit wanted 0.8
+  // for the overcall, which cost the 30bb tree 0.1pp; 0.9 costs none. A seat that isn't a blind overcalls
+  // half as often again: a button behind a called open flatted 22% against the solver's 11% at 100bb (18
+  // against 9% at 40bb), and the 20/40/100bb trees rose 0.02–0.06pp, the others 0.02–0.04pp.
+  overcallFactor: { ipCaller: 0.9, oopCaller: 1, nonBlind: 0.5 },
+  squeezeKeepFactor: { opener: 0.8, caller: 1 },
+  // Fitted on the same 20/40/100bb trees and checked on the 15/25/30/50/60/80bb ones and six ICM spots: from 40bb
+  // up the solver opens the hands with the most raw equity (the top 15%: broadways and big aces) a little more than
+  // a flop-seeing ranking says. Whole trees 40bb +0.09pp, 50 +0.06, 60 +0.08, 100 +0.11, 25/30bb a little. A 20bb
+  // anchor (small pairs −0.03) gained 0.25pp there but moved the 20bb CO-vs-BTN 3-bet pot flop c-bet 1.5pp away
+  // from the solver's, so 20bb stays unshifted.
+  openPlayabilityShiftByStack: [
+    { stackBb: 20 },
+    { stackBb: 40, topEquityExtra: 0.01 },
+    { stackBb: 100, topEquityExtra: 0.01 },
+  ],
+  // The solver's cold 3-bets against a lone open (seats that aren't blinds) take more big offsuit broadways and
+  // fewer pairs below TT and suited broadways than our one mixed slice does; weighting the slice by class (from
+  // the 100bb tree's class totals, the 3-bet total kept) cut that family's loss 1.26→1.14pp at 100bb and moved the
+  // vs-3bet family by under 0.03pp; whole tree +0.15pp, 50–80bb partly. A 40bb anchor gained 0.17pp at 40bb but
+  // moved the 40bb CO-vs-BTN flops (called pot 2.5pp, 3-bet pot 5.5pp) away from the solver's, so it stays neutral.
+  coldThreeBetClassWeightsByStack: [
+    { stackBb: 20 },
+    { stackBb: 40 },
+    { stackBb: 100, offsuitBroadway: 1.25, smallPair: 0.1, middlePair: 0.4, suitedBroadway: 0.9 },
+  ],
+  // An opener facing a 3-bet and then a cold 4-bet, with the 3-bettor still to act, kept as much as it keeps
+  // against a lone 4-bet; the solver nearly always folds there. Fitted on the 20/40/100bb trees: 40bb +0.05pp,
+  // 100bb +0.08; checked on 50/60/80bb +0.07–0.08, none worse.
+  coldFourBetKeepFactor: 0.1,
   calledReraiseShareCap: RERAISE_MAX_SHARE_OF_KEPT,
   closingContinueFactor: 1,
   jamReraiseShare: { threeBet: TOURNAMENT_JAM_THREE_BET_SHARE, fourBet: TOURNAMENT_JAM_FOUR_BET_SHARE },
   tuningByStack: TOURNAMENT_TUNING_BY_STACK,
   // Where the BB bluffs offsuit hands (60bb and shallower), the SB keeps its suited bluffs: offsuit ones flatted
-  // 2pp less and folded 5pp more against a 40bb button open than the commercial solver does.
+  // 2pp less and folded 5pp more against a 40bb button open than the commercial solver does. Half of them
+  // suited matched the solver's whole trees' hands better (40bb SB against a button open 83→89%), but cut
+  // its flats there to 9% against the solver's 13%.
   sbSuitedBluffShare: 1,
   // Facing a 3-bet from a seat that isn't a blind, the commercial solver's 100bb opener (8-max ChipEV, read
   // 2026-11-20) flats the small pairs and suited connectors that ours folded, so ours called with a stronger,
@@ -507,6 +563,8 @@ const CASH_8: GameFormat = {
   // agreement NL10 85.9→87.3%, NL50 86.2→88.3%; whole tree NL10 93.48→93.55%, NL50 93.73→93.84%,
   // NL500 93.60→93.67%, no rake 92.29→92.33%, 8-max no rake 92.22→92.23%.
   sbFirstInPlayabilityShift: { bonusScaleFactor: 1.5, suitedConnectorExtra: 0.03 },
+  // As in tournaments (see TOURNAMENT_8), fitted on NL10 and no rake 6-max: +0.02pp each, NL50/NL500/8-max +0.02.
+  coldFourBetKeepFactor: 0.3,
   sbOpenerKeepFactor: 1.2,
   // The same solver's BB against an SB open (read 2026-11-18) bluffs with A2o–A7o, K8o–K9o, Q9o and the low
   // suited queens and jacks, and flats KQo, KJo, AJo–A9o; an even slice of its candidates 3-bet those

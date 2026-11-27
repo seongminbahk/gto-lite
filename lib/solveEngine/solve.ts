@@ -1,6 +1,9 @@
+import type { PlayabilityShift } from "@/lib/equity/handStrength";
+import type { ThreeBetClassWeights } from "./gameFormat";
 import type { HandFrequency, Position, RangeSource } from "@/types/rangeData";
 import type { EquityMatrix } from "@/lib/equity/loadEquityMatrix";
-import { ALL_HANDS, TOTAL_COMBOS } from "@/lib/handRange/handList";
+import { ALL_HANDS, HAND_BY_LABEL, TOTAL_COMBOS } from "@/lib/handRange/handList";
+import { RANKS } from "@/lib/cards";
 import { SEAT_ORDER, postflopSeatIndex, seatIndex } from "@/lib/actionTree/seatOrder";
 import {
   generateBbVsLimpScenario,
@@ -25,12 +28,12 @@ import {
   RERAISE_KEEP_BASE,
 } from "@/lib/heuristicRanges/config";
 import { generateCallShoveScenario, generateVsReraiseScenario, type JamDefense, type VsReraiseParams } from "@/lib/heuristicRanges/vsReraise";
-import type { FrequencyMap } from "@/lib/nashSolver/pushFoldSolver";
+import { weightedEquityVsRange, type FrequencyMap } from "@/lib/nashSolver/pushFoldSolver";
 import { firstInWidthsUnder, tunedAt, type FirstInAnchor, type GameFormat } from "./gameFormat";
 import { computeRawRaiseTo } from "./actionSizing";
 import { aggressiveFrequencies } from "./postflopHandoff";
 import { callersOf, type PotState, type SeatDecision } from "./potState";
-import { DEFAULT_RAKE_SETTINGS, NO_RAKE_SETTINGS, rakeReliefAt, rakeShare, type RakeSettings } from "./rake";
+import { DEFAULT_RAKE_SETTINGS, NO_RAKE_SETTINGS, netPot, rakeReliefAt, rakeShare, type RakeSettings } from "./rake";
 import { shouldUseNash } from "./classify";
 import { BIG_BLIND_BB, SHORT_RERAISE_JAM_SHARE, SMALL_BLIND_BB } from "./constants";
 import { CHIP_EV, equalStackBubbleFactor, type IcmStructure } from "./icm";
@@ -210,11 +213,40 @@ function limpRaiseJamDefense(ctx: SpotContext): JamDefense | undefined {
   return { foldingRange, villainRiskBb };
 }
 
+/**
+ * Facing an all-in that others have already called: a hand calls when its
+ * equity against the jammer's range times its equity against each caller's
+ * beats the price. Against the jammer alone it called as if heads-up, with
+ * hands the callers' ranges crush: on the commercial solver's whole 8-max
+ * 15/20/25bb tournament trees this matched its hands 0.31/0.31/0.11pp better,
+ * and moved no deeper or cash tree. Undefined when nobody has called yet.
+ */
+function multiwayCallShove(ctx: SpotContext, jammerRange: FrequencyMap): HandFrequency[] | undefined {
+  const { matrix, potState, rake } = ctx;
+  if (!ctx.lastAggressor) return undefined;
+  const callers = callersOf(potState, ctx.activeSeat).filter((seat) => potState.lastDecision[seat]?.action === "call");
+  const callerRanges = callers
+    .map((seat) => rangeAfter(matrix, seat, potState.lastDecision[seat]!, ctx.effectiveStackBb, rake, ctx.icm))
+    .filter((range) => shareOfCombos(range) > 0);
+  if (callerRanges.length === 0) return undefined;
+  const heroRange = handsFacingRaise(ctx) ? ctx.heroRange : undefined;
+  const owed = ctx.amountOwedBb * ctx.allInBubbleFactor;
+  const priceShare = owed / netPot(potState.potBb + owed, rake.structure);
+  return ALL_HANDS.map(({ hand }) => {
+    if (heroRange && (heroRange.get(hand) ?? 0) <= 0) return { hand, fold: 1, call: 0, raise: 0 };
+    const equity = callerRanges.reduce((e, range) => e * weightedEquityVsRange(matrix, hand, range), weightedEquityVsRange(matrix, hand, jammerRange));
+    const call = equity > priceShare ? 1 : 0;
+    return { hand, fold: 1 - call, call, raise: 0 };
+  });
+}
+
 function solveShoveSpot(ctx: SpotContext): SolvedNode {
   const { matrix, potState, rake, villainRange } = ctx;
   // A fresh shove is the game the Nash solver models; anything after more
   // action has a bigger pot and known ranges of its own, so price it directly.
   if (villainRange && shareOfCombos(villainRange) > 0 && (ctx.ownDecision || potState.raiseDepth >= 2)) {
+    const multiway = multiwayCallShove(ctx, villainRange);
+    if (multiway) return { source: "heuristic-approx", hands: multiway };
     return {
       source: "heuristic-approx",
       hands: generateCallShoveScenario(matrix, {
@@ -271,10 +303,25 @@ function solveFirstIn(ctx: SpotContext): SolvedNode {
       : ranking;
     return { source: "heuristic-approx", hands: generateSbFirstInScenario(sbRanking, effectiveStackBb, anchors, format.sbRaiseSpread) };
   }
+  const openShift = format.openPlayabilityShiftByStack && shiftAtStack(format.openPlayabilityShiftByStack, effectiveStackBb);
+  const openRanking = openShift ? getPlayabilityRanking(ctx.matrix, format.playabilityByStack ? effectiveStackBb : undefined, rakeSuitedConnectorGain(ctx), openShift) : ranking;
   return {
     source: "heuristic-approx",
-    hands: generateOpeningScenario(ranking, seatIndex(activeSeat), effectiveStackBb, firstInWidths),
+    hands: generateOpeningScenario(openRanking, seatIndex(activeSeat), effectiveStackBb, firstInWidths),
   };
+}
+
+/** A shift interpolated between the anchors around `stackBb`, flat outside them; a field an anchor leaves out counts as none. */
+export function shiftAtStack(anchors: readonly ({ stackBb: number } & PlayabilityShift)[], stackBb: number): PlayabilityShift {
+  const found = anchors.findIndex((a) => a.stackBb >= stackBb);
+  const hi = found === -1 ? anchors.length - 1 : found;
+  const a = anchors[found <= 0 ? hi : hi - 1];
+  const b = anchors[hi];
+  const t = a === b ? 0 : (stackBb - a.stackBb) / (b.stackBb - a.stackBb);
+  const fields = ["smallPairExtra", "suitedConnectorExtra", "offsuitExtra", "suitedBroadwayExtra", "topEquityExtra"] as const;
+  const shift: PlayabilityShift = { bonusScaleFactor: (a.bonusScaleFactor ?? 1) + ((b.bonusScaleFactor ?? 1) - (a.bonusScaleFactor ?? 1)) * t };
+  for (const field of fields) shift[field] = (a[field] ?? 0) + ((b[field] ?? 0) - (a[field] ?? 0)) * t;
+  return shift;
 }
 
 /**
@@ -315,7 +362,51 @@ function solveFacingRaise(ctx: FacingRaiseContext): SolvedNode {
     ? generateVsReraiseScenario(ctx.matrix, ranking, vsReraiseParams(ctx, ctx.heroRange, ctx.villainRange))
     : generateFacingRaiseScenario(ranking, facingRaiseParams(ctx));
   const answered = blindJamsOrFolds(ctx) ? hands.map((h) => ({ ...h, fold: h.fold + h.call, call: 0 })) : hands;
-  return { source: "heuristic-approx", hands: reraisesAllIn(ctx) ? jamReraises(answered) : answered };
+  const weighted = coldThreeBetWeights(ctx) ? weighThreeBetsByClass(answered, coldThreeBetWeights(ctx)!) : answered;
+  return { source: "heuristic-approx", hands: reraisesAllIn(ctx) ? jamReraises(weighted) : weighted };
+}
+
+/** The class weights for a cold 3-bet against a lone open by a seat that isn't a blind (GameFormat.coldThreeBetClassWeightsByStack). */
+function coldThreeBetWeights(ctx: FacingRaiseContext): Required<ThreeBetClassWeights> | undefined {
+  const anchors = ctx.format.coldThreeBetClassWeightsByStack;
+  const { potState } = ctx;
+  if (!anchors || potState.raiseDepth !== 1 || ctx.isBlind || ctx.ownDecision) return undefined;
+  if (Object.values(potState.lastDecision).some((decision) => decision?.action === "call")) return undefined;
+  const found = anchors.findIndex((a) => a.stackBb >= ctx.effectiveStackBb);
+  const hi = found === -1 ? anchors.length - 1 : found;
+  const a = anchors[found <= 0 ? hi : hi - 1];
+  const b = anchors[hi];
+  const t = a === b ? 0 : (ctx.effectiveStackBb - a.stackBb) / (b.stackBb - a.stackBb);
+  const at = (field: keyof ThreeBetClassWeights) => (a[field] ?? 1) + ((b[field] ?? 1) - (a[field] ?? 1)) * t;
+  return { offsuitBroadway: at("offsuitBroadway"), smallPair: at("smallPair"), middlePair: at("middlePair"), suitedBroadway: at("suitedBroadway") };
+}
+
+function threeBetClassOf(hand: string): keyof ThreeBetClassWeights | undefined {
+  const high = RANKS.indexOf(hand[0] as (typeof RANKS)[number]);
+  const low = RANKS.indexOf(hand[1] as (typeof RANKS)[number]);
+  const ten = RANKS.indexOf("T");
+  if (high === low) return high >= RANKS.indexOf("5") ? "smallPair" : high > ten ? "middlePair" : undefined;
+  if (hand.endsWith("s")) return low <= ten ? "suitedBroadway" : undefined;
+  return (hand[0] === "A" && low <= ten) || (hand[0] === "K" && low <= RANKS.indexOf("J")) ? "offsuitBroadway" : undefined;
+}
+
+/** Scales each class's 3-bets by its weight (capped at what the hand continues with), rescaled so the weighted hands 3-bet as many combos as before. */
+function weighThreeBetsByClass(hands: HandFrequency[], weights: Required<ThreeBetClassWeights>): HandFrequency[] {
+  const combos = (hand: string) => HAND_BY_LABEL.get(hand)!.combos;
+  const classOf = hands.map((h) => threeBetClassOf(h.hand));
+  const weightOf = (i: number) => (classOf[i] === undefined ? 1 : weights[classOf[i]!]);
+  // TT and up keep their 3-bets; the rest share what's left.
+  const fixed = (i: number) => classOf[i] === undefined && /^(AA|KK|QQ|JJ|TT)$/.test(hands[i].hand);
+  const target = hands.reduce((sum, h, i) => sum + (fixed(i) ? 0 : h.raise * combos(h.hand)), 0);
+  const raisesAt = (scale: number) => hands.map((h, i) => (fixed(i) ? h.raise : Math.min(h.raise + h.call, h.raise * weightOf(i) * scale)));
+  let scale = 1;
+  for (let step = 0; step < 30; step++) {
+    const got = raisesAt(scale).reduce((sum, raise, i) => sum + (fixed(i) ? 0 : raise * combos(hands[i].hand)), 0);
+    if (got <= 0 || Math.abs(got - target) < 1e-9) break;
+    scale *= target / got;
+  }
+  const raises = raisesAt(scale);
+  return hands.map((h, i) => ({ ...h, raise: raises[i], call: h.raise + h.call - raises[i] }));
 }
 
 /** A blind whose 3-bet met a 4-bet, out of position with little behind for a flop: 5-bets or folds (GameFormat.blindFacingFourBetCalls). */
@@ -347,6 +438,15 @@ function fourBetTuning(ctx: FacingRaiseContext): { widthRatio: number; bluffShar
   return (facingThreeBetInPosition && format.fourBet.vsInPosition) || (sbFacingBbThreeBet(ctx) && format.fourBet.sbVsBb) || format.fourBet;
 }
 
+/** A 4-bet or more over hero's own action with another player still in who raised or called: the 3-bettor behind a cold 4-bet. */
+function facingColdFourBet(ctx: FacingRaiseContext): boolean {
+  const { potState, activeSeat, lastAggressor } = ctx;
+  if (potState.raiseDepth < 3 || !ctx.ownDecision) return false;
+  return Object.entries(potState.lastDecision).some(
+    ([seat, decision]) => seat !== activeSeat && seat !== lastAggressor && decision && decision.action !== "fold" && !potState.foldedSeats.has(seat as Position),
+  );
+}
+
 function sbFacingBbThreeBet(ctx: FacingRaiseContext): boolean {
   return ctx.potState.raiseDepth === 2 && ctx.activeSeat === "SB" && ctx.lastAggressor === "BB" && ctx.ownDecision?.action === "raise";
 }
@@ -356,6 +456,7 @@ function reraiseKeepFactor(ctx: FacingRaiseContext): number {
   const { format, potState, activeSeat, lastAggressor, calledLast } = ctx;
   const reraisedOwnRaise = potState.raiseDepth === 2 && ctx.ownDecision?.action === "raise";
   return (
+    (facingColdFourBet(ctx) ? (format.coldFourBetKeepFactor ?? 1) : 1) *
     (facingSqueeze(ctx) ? (calledLast ? format.squeezeKeepFactor.caller : format.squeezeKeepFactor.opener) : 1) *
     (activeSeat === "SB" && reraisedOwnRaise ? (format.sbOpenerKeepFactor ?? 1) : 1) *
     (lastAggressor === "SB" && reraisedOwnRaise ? (format.sbThreeBetKeepFactor ?? 1) : 1)
@@ -457,11 +558,13 @@ function threeBetWidthRatioFor(ctx: FacingRaiseContext, blindVsBlind: GameFormat
   );
 }
 
-/** Flats shrink for the SB, and for each seat that already called, harder when that caller is in position on hero. */
+/** Flats shrink for the SB, and for each seat that already called, harder when that caller is in position on hero or hero isn't a blind. */
 function flatCallFactor(ctx: FacingRaiseContext): number {
   const { format, activeSeat } = ctx;
+  const overcall = !ctx.isBlind && callersOf(ctx.potState, activeSeat).length > 0;
   return (
     (activeSeat === "SB" ? (format.sbFlatFactor ?? 1) : 1) *
+    (overcall ? (format.overcallFactor.nonBlind ?? 1) : 1) *
     callersOf(ctx.potState, activeSeat).reduce(
       (factor, caller) =>
         factor * (postflopSeatIndex(caller) > postflopSeatIndex(activeSeat) ? format.overcallFactor.ipCaller : format.overcallFactor.oopCaller),

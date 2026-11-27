@@ -366,3 +366,80 @@ describe("the tournament BB behind a limp", () => {
     expect(at(20).get("72o")).toBeCloseTo(0.35, 6);
   });
 });
+
+describe("multiway and cold-calling width", () => {
+  const SEATS: Position[] = ["UTG", "UTG1", "LJ", "HJ", "CO", "BTN", "SB", "BB"];
+  /** The active seat's hands after `moves` (seat → action; seats not named fold, "?" stops before that seat). */
+  const at = (format: GameFormat, stackBb: number, moves: Partial<Record<Position, ActionType | "?">>) => {
+    const path: { actor: Position; action: ActionType }[] = [];
+    for (const seat of SEATS) {
+      if (format.absentSeats?.includes(seat)) continue;
+      const move = moves[seat];
+      if (move === "?") break;
+      path.push({ actor: seat, action: move ?? "fold" });
+    }
+    const result = replayActionPath(path, stackBb, format);
+    if (result.status !== "active") throw new Error("expected a seat to act");
+    return solveActiveSeat(matrix, result.activeSeat, result.potState, stackBb, DEFAULT_RAKE_SETTINGS).hands;
+  };
+  const share = (hands: HandFrequency[], freq: (h: HandFrequency) => number) => combosWith(hands, freq) / 1326;
+
+  it("has a tournament seat that isn't a blind overcall a called open about half as often", () => {
+    const moves = { HJ: "raise", CO: "call", BTN: "?" } as const;
+    const flats = (format: GameFormat) => share(at(format, 100, moves), (h) => h.call);
+    const unscaled = flats({ ...TOURNAMENT_8, overcallFactor: { ...TOURNAMENT_8.overcallFactor, nonBlind: 1 } });
+    expect(flats(TOURNAMENT_8) / unscaled).toBeCloseTo(0.5, 1);
+  });
+
+  it("has a tournament opener keep less of its range against a squeeze than the factor-free rule does", () => {
+    const moves = { HJ: "raise", CO: "call", BTN: "raise" } as const;
+    const continues = (format: GameFormat) => share(at(format, 40, moves), (h) => 1 - h.fold);
+    expect(continues(TOURNAMENT_8)).toBeLessThan(continues({ ...TOURNAMENT_8, squeezeKeepFactor: { opener: 1, caller: 1 } }) - 0.01);
+  });
+
+  it("calls an all-in tighter when another player already called it, since the caller's range has equity too", () => {
+    const behindCaller = at(TOURNAMENT_8, 20, { HJ: "raise", CO: "allin", BTN: "call", BB: "?" });
+    const headsUp = at(TOURNAMENT_8, 20, { HJ: "raise", CO: "allin", BB: "?" });
+    expect(share(behindCaller, (h) => h.call)).toBeLessThan(share(headsUp, (h) => h.call) / 2);
+    expect(behindCaller.find((h) => h.hand === "AA")!.call).toBe(1);
+  });
+
+  it("has an opener facing a cold 4-bet, with the 3-bettor still to act, keep less than against a lone 4-bet", () => {
+    const moves = { HJ: "raise", CO: "raise", BTN: "raise" } as const;
+    const continues = (format: GameFormat) => share(at(format, 100, moves), (h) => 1 - h.fold);
+    expect(continues(TOURNAMENT_8)).toBeLessThan(continues({ ...TOURNAMENT_8, coldFourBetKeepFactor: undefined }) * 0.5);
+  });
+
+  it("weights a tournament cold 3-bet toward offsuit broadways and away from small pairs, keeping its total", () => {
+    const moves = { HJ: "raise", BTN: "?" } as const;
+    const plain = at({ ...TOURNAMENT_8, coldThreeBetClassWeightsByStack: undefined }, 100, moves);
+    const weighted = at(TOURNAMENT_8, 100, moves);
+    const raises = (hands: HandFrequency[], list?: string[]) => share(list ? hands.filter((h) => list.includes(h.hand)) : hands, (h) => h.raise);
+    expect(raises(weighted)).toBeCloseTo(raises(plain), 6);
+    expect(raises(weighted, ["AKo", "AQo", "AJo", "ATo", "KQo", "KJo"])).toBeGreaterThan(raises(plain, ["AKo", "AQo", "AJo", "ATo", "KQo", "KJo"]));
+    expect(raises(weighted, ["22", "33", "44", "55"])).toBeLessThan(raises(plain, ["22", "33", "44", "55"]));
+    for (const h of weighted) expect(h.fold + h.call + h.raise + (h.allin ?? 0)).toBeCloseTo(1, 9);
+    const at40 = (format: GameFormat) => at(format, 40, moves).map((h) => h.raise);
+    expect(at40(TOURNAMENT_8)).toEqual(at40({ ...TOURNAMENT_8, coldThreeBetClassWeightsByStack: undefined }));
+  });
+});
+
+describe("the tournament open ranking", () => {
+  const opens = (format: GameFormat, stackBb: number, hands: string[]) => {
+    const replayed = replayActionPath([{ actor: "UTG", action: "fold" }, { actor: "UTG1", action: "fold" }], stackBb, format);
+    if (replayed.status !== "active") throw new Error("LJ should act");
+    const result = new Map(solveActiveSeat(matrix, replayed.activeSeat, replayed.potState, stackBb).hands.map((h) => [h.hand, h]));
+    return hands.reduce((sum, hand) => sum + (1 - result.get(hand)!.fold) * HAND_BY_LABEL.get(hand)!.combos, 0);
+  };
+  const unshifted = { ...TOURNAMENT_8, openPlayabilityShiftByStack: undefined };
+
+  it("leaves the 20bb open on the flop-seeing ranking", () => {
+    const smallPairs = ["22", "33", "44", "55", "66"];
+    expect(opens(TOURNAMENT_8, 20, smallPairs)).toBeCloseTo(opens(unshifted, 20, smallPairs), 9);
+  });
+
+  it("opens the broadways a little more from 40bb up", () => {
+    const broadways = ["KJo", "KTo", "QJo", "ATo", "A9o"];
+    for (const stackBb of [40, 100]) expect(opens(TOURNAMENT_8, stackBb, broadways)).toBeGreaterThanOrEqual(opens(unshifted, stackBb, broadways));
+  });
+});

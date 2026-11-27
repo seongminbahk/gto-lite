@@ -63,4 +63,17 @@ describe("handStrength", () => {
     expect(ranking.get("AA")!).toBeLessThan(ranking.get("KK")!);
     expect(ranking.get("KK")!).toBeLessThan(ranking.get("QQ")!);
   });
+
+  it("lifts only the hands with the most raw equity with topEquityExtra", () => {
+    const lifted = computePlayabilityRanking(matrix, { ...BASE_PLAYABILITY, topEquityExtra: 0.02 });
+    const byEquity = computePlayabilityRanking(matrix, { bonusScale: 0, smallPairExtra: 0, suitedConnectorExtra: 0 });
+    let moved = 0;
+    for (const [hand, before] of ranking) {
+      const after = lifted.get(hand)!;
+      if (byEquity.get(hand)! < 0.15) expect(after).toBeLessThanOrEqual(before);
+      else expect(after).toBeGreaterThanOrEqual(before);
+      if (after !== before) moved++;
+    }
+    expect(moved).toBeGreaterThan(0);
+  });
 });
